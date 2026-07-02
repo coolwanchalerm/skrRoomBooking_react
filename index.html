@@ -3240,7 +3240,7 @@ function renderReports(){
     });
     rows = rows.sort((a,b) => new Date(a.date) - new Date(b.date));
 
-    // คำนวณหา "ห้องที่ใช้งานบ่อย", "ฝ่ายที่ใช้งานบ่อย" และ "รวมชั่วโมงสะสมสะสม"
+    // คำนวณสถิติจาก rows ทั้งหมดที่กรองแล้ว (ไม่ขึ้นกับ empty check)
     calculateReportStats(rows);
 
     const tbody = document.querySelector('#rpTable tbody');
@@ -3298,11 +3298,12 @@ function renderReports(){
 
 // ฟังก์ชันคำนวณสถิติและตัวแปรรายงานสำคัญแบบ Real-time
 function calculateReportStats(rows) {
-  const approvedRows = rows.filter(b => b.status === 'approved');
+  // ใช้ทุกสถานะ (pending + approved) เพื่อเป็น basis สถิติ เว้น cancelled
+  const activeRows = rows.filter(b => b.status !== 'cancelled');
 
   // 1. หาห้องประชุมที่ถูกจองใช้งานบ่อยสุด
   const roomCounts = {};
-  approvedRows.forEach(b => {
+  activeRows.forEach(b => {
     roomCounts[b.roomId] = (roomCounts[b.roomId] || 0) + 1;
   });
   let maxRoomId = null;
@@ -3313,16 +3314,17 @@ function calculateReportStats(rows) {
       maxRoomId = parseInt(rid);
     }
   }
-  const mostUsedRoomName = maxRoomId ? roomName(maxRoomId) : '-';
-  const mostUsedText = maxRoomId ? `${mostUsedRoomName} (${maxRoomCount} ครั้ง)` : 'ไม่มีข้อมูลอนุมัติ';
+  const mostUsedRoomName = maxRoomId ? roomName(maxRoomId) : null;
+  const mostUsedText = mostUsedRoomName
+    ? `${mostUsedRoomName} (${maxRoomCount} ครั้ง)`
+    : 'ไม่มีข้อมูล';
   document.getElementById('rpStatMostUsedRoom').textContent = mostUsedText;
 
   // 2. หาสังกัด/กลุ่มงานที่จองห้องเยอะที่สุด
   const deptCounts = {};
-  approvedRows.forEach(b => {
-    if (b.department) {
-      deptCounts[b.department] = (deptCounts[b.department] || 0) + 1;
-    }
+  activeRows.forEach(b => {
+    const key = b.isExternal ? 'บุคคลภายนอก' : (b.department || 'ไม่ระบุสังกัด');
+    deptCounts[key] = (deptCounts[key] || 0) + 1;
   });
   let maxDeptName = null;
   let maxDeptCount = 0;
@@ -3332,22 +3334,24 @@ function calculateReportStats(rows) {
       maxDeptName = dname;
     }
   }
-  const mostActiveText = maxDeptName ? `${maxDeptName.replace('กลุ่มสาระการเรียนรู้', '')} (${maxDeptCount} ครั้ง)` : 'ไม่มีข้อมูลอนุมัติ';
+  const mostActiveText = maxDeptName
+    ? `${maxDeptName.replace('กลุ่มสาระการเรียนรู้', '').trim()} (${maxDeptCount} ครั้ง)`
+    : 'ไม่มีข้อมูล';
   document.getElementById('rpStatMostActiveDept').textContent = mostActiveText;
 
-  // 3. รวมจำนวนชั่วโมงในการจัดประชุมสะสมรวม
-  let totalHours = 0;
-  approvedRows.forEach(b => {
+  // 3. รวมจำนวนชั่วโมงในการจัดประชุมสะสมรวม (ทุกสถานะยกเว้นยกเลิก)
+  let totalMinutes = 0;
+  activeRows.forEach(b => {
     if (b.timeStart && b.timeEnd) {
       const [sh, sm] = b.timeStart.split(':').map(Number);
       const [eh, em] = b.timeEnd.split(':').map(Number);
       const diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
-      if (diffMinutes > 0) {
-        totalHours += diffMinutes / 60;
-      }
+      if (diffMinutes > 0) totalMinutes += diffMinutes;
     }
   });
-  document.getElementById('rpStatTotalHours').textContent = totalHours > 0 ? `${totalHours.toFixed(1)} ชั่วโมง` : '0 ชั่วโมง';
+  const totalHours = totalMinutes / 60;
+  document.getElementById('rpStatTotalHours').textContent =
+    totalHours > 0 ? `${totalHours.toFixed(1)} ชั่วโมง` : '0 ชั่วโมง';
 }
 
 // ใช้ระบบส่งออกไฟล์ผ่าน html2canvas เพื่อเรนเดอร์รูปภาพ HTML สวยงามลงหน้า PDF หมดห่วงเรื่องภาษาไทยเพี้ยน
