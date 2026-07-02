@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup & temp files
+*.bak
+*backup*
+*copy*
+fix_scripts.py
+*.py
+
+# Editor
+.vscode/
+.idea/
+
+# Node (ถ้าใช้ในอนาคต)
+node_modules/
