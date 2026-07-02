@@ -578,25 +578,31 @@ body{
         <label class="form-label">ชื่อผู้ใช้งาน</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-          <input type="text" id="loginUsername" class="form-control" placeholder="เช่น teacher01 / admin" required>
+          <input type="text" id="loginUsername" class="form-control" placeholder="เช่น admin / teacher1" required>
         </div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">รหัสผ่าน</label>
+      <div class="mb-4">
+        <label class="form-label">รหัสผ่าน (เบอร์โทรศัพท์)</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-          <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+          <input type="password" id="loginPassword" class="form-control" placeholder="กรอกเบอร์โทรศัพท์" required>
         </div>
       </div>
-      <button type="submit" class="btn btn-login w-100">เข้าสู่ระบบ</button>
+      <!-- Error message แบบ inline -->
+      <div id="loginError" class="alert alert-danger d-none py-2 mb-3" role="alert" style="font-size:13.5px;">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="loginErrorText"></span>
+      </div>
+      <button type="submit" class="btn btn-login w-100" id="loginBtn">
+        <span id="loginBtnText">เข้าสู่ระบบ</span>
+        <span id="loginBtnSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+      </button>
     </form>
 
     <div class="login-demo">
       <p class="mb-1 fw-semibold"><i class="bi bi-info-circle"></i> บัญชีทดลองใช้งาน</p>
       <div class="d-flex flex-wrap gap-2 mt-2">
-        <button class="btn btn-demo" data-user="admin" data-pass="admin123">แอดมิน: admin / admin123</button>
-        <button class="btn btn-demo" data-user="teacher01" data-pass="1234">ครู: teacher01 / 1234</button>
-        <button class="btn btn-demo" data-user="teacher02" data-pass="1234">ครู: teacher02 / 1234</button>
+        <button class="btn btn-demo" data-user="admin" data-pass="0812345678">แอดมิน: admin / 0812345678</button>
+        <button class="btn btn-demo" data-user="teacher1" data-pass="0898765432">ครู: teacher1 / 0898765432</button>
       </div>
     </div>
   </div>
@@ -878,8 +884,15 @@ body{
                 <div class="row g-2 align-items-center">
                   <div class="col-6 d-flex align-items-center gap-2">
                     <select class="form-select" id="bk_start_hour" required>
+                      <option value="00">00</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06">06</option>
                       <option value="07">07</option>
-                      <option value="08" selected>08</option>
+                      <option value="08">08</option>
                       <option value="09">09</option>
                       <option value="10">10</option>
                       <option value="11">11</option>
@@ -890,6 +903,11 @@ body{
                       <option value="16">16</option>
                       <option value="17">17</option>
                       <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                      <option value="21">21</option>
+                      <option value="22">22</option>
+                      <option value="23">23</option>
                     </select>
                     <span class="text-muted" style="font-size: 13px; white-space: nowrap;">ชั่วโมง</span>
                   </div>
@@ -909,9 +927,16 @@ body{
                 <div class="row g-2 align-items-center">
                   <div class="col-6 d-flex align-items-center gap-2">
                     <select class="form-select" id="bk_end_hour" required>
+                      <option value="00">00</option>
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06">06</option>
                       <option value="07">07</option>
                       <option value="08">08</option>
-                      <option value="09" selected>09</option>
+                      <option value="09">09</option>
                       <option value="10">10</option>
                       <option value="11">11</option>
                       <option value="12">12</option>
@@ -921,6 +946,11 @@ body{
                       <option value="16">16</option>
                       <option value="17">17</option>
                       <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                      <option value="21">21</option>
+                      <option value="22">22</option>
+                      <option value="23">23</option>
                     </select>
                     <span class="text-muted" style="font-size: 13px; white-space: nowrap;">ชั่วโมง</span>
                   </div>
@@ -1289,6 +1319,8 @@ body{
    data.js - Data layer (localStorage based database)
    ========================================================= */
 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwdrjXNlecgxwjALMYhVoePtA3wPa6i9izegG28EwpYio_uZlTVgZajaO7S6fxumK8M5g/exec"; // ใส่ URL ของ Web App (Google Apps Script) ที่นี่
+
 const DB_KEYS = {
   USERS: 'srw_users',
   ROOMS: 'srw_rooms',
@@ -1406,10 +1438,35 @@ function genDefaultBookings(){
 }
 
 const DB = {
-  init(){
+  async fetchGAS(action, payload = null) {
+    if (!GAS_URL) return null;
+    const opts = { method: "POST", body: JSON.stringify(payload) };
+    // fetch will default to text/plain for stringified body, which avoids CORS preflight
+    const res = await fetch(`${GAS_URL}?action=${action}`, opts);
+    const json = await res.json();
+    if (json.status === "success") return json.data;
+    throw new Error(json.message);
+  },
+  
+  async syncData() {
+    if (!GAS_URL) return;
+    try {
+      const [users, rooms, bookings] = await Promise.all([
+        this.fetchGAS("getUsers"),
+        this.fetchGAS("getRooms"),
+        this.fetchGAS("getBookings")
+      ]);
+      localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+      localStorage.setItem(DB_KEYS.ROOMS, JSON.stringify(rooms));
+      localStorage.setItem(DB_KEYS.BOOKINGS, JSON.stringify(bookings));
+    } catch(e) {
+      console.error("Failed to sync from GAS:", e);
+    }
+  },
+
+  async init(){
     const existingUsers = localStorage.getItem(DB_KEYS.USERS);
-    // Force reset default users if missing department key to upgrade seamlessly
-    if(!existingUsers || !existingUsers.includes('department')){
+    if(!existingUsers || !existingUsers.includes("department")){
       localStorage.setItem(DB_KEYS.USERS, JSON.stringify(DEFAULT_USERS));
     }
     if(!localStorage.getItem(DB_KEYS.ROOMS)){
@@ -1418,22 +1475,46 @@ const DB = {
     if(!localStorage.getItem(DB_KEYS.BOOKINGS)){
       localStorage.setItem(DB_KEYS.BOOKINGS, JSON.stringify(genDefaultBookings()));
     }
+    // Sync data if GAS_URL is present
+    await this.syncData();
   },
-  getUsers(){ return JSON.parse(localStorage.getItem(DB_KEYS.USERS) || '[]'); },
+
+  getUsers(){ 
+    const users = JSON.parse(localStorage.getItem(DB_KEYS.USERS) || "[]");
+    return users.map(u => ({ ...u, fullname: u.fullname || u.name || '' }));
+  },
   getRooms(){ 
-    const rooms = JSON.parse(localStorage.getItem(DB_KEYS.ROOMS) || '[]'); 
-    return rooms.map(r => ({ ...r, status: r.status || 'available' }));
+    const rooms = JSON.parse(localStorage.getItem(DB_KEYS.ROOMS) || "[]"); 
+    return rooms.map(r => ({ ...r, status: r.status || "available", building: r.building || '', floor: r.floor || '' }));
   },
   setRooms(rooms){ localStorage.setItem(DB_KEYS.ROOMS, JSON.stringify(rooms)); },
-  getBookings(){ return JSON.parse(localStorage.getItem(DB_KEYS.BOOKINGS) || '[]'); },
+  getBookings(){ return JSON.parse(localStorage.getItem(DB_KEYS.BOOKINGS) || "[]"); },
   setBookings(bookings){ localStorage.setItem(DB_KEYS.BOOKINGS, JSON.stringify(bookings)); },
 
-  getSession(){ return JSON.parse(localStorage.getItem(DB_KEYS.SESSION) || 'null'); },
+  getSession(){ 
+    const u = JSON.parse(localStorage.getItem(DB_KEYS.SESSION) || "null");
+    if(u) u.fullname = u.fullname || u.name || '';
+    return u;
+  },
   setSession(user){ localStorage.setItem(DB_KEYS.SESSION, JSON.stringify(user)); },
   clearSession(){ localStorage.removeItem(DB_KEYS.SESSION); },
 
-  login(username, password){
-    const user = this.getUsers().find(u => u.username === username && u.password === password);
+  async login(username, password){
+    // Strip leading zeros for comparison (Google Sheets removes them)
+    const normalizePhone = (p) => String(p || "").replace(/^0+/, "");
+    const inputPhone = normalizePhone(password);
+
+    if (GAS_URL) {
+      const user = await this.fetchGAS("login", { username, password: inputPhone });
+      if (user) { this.setSession(user); return user; }
+      return null;
+    }
+    
+    // Fallback: local localStorage
+    const user = this.getUsers().find(u =>
+      u.username === username &&
+      normalizePhone(u.phone) === inputPhone
+    );
     if(user){ this.setSession(user); return user; }
     return null;
   },
@@ -1442,17 +1523,24 @@ const DB = {
     return arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
   },
 
-  addBooking(booking){
+  async addBooking(booking){
+    if (GAS_URL) {
+       booking = await this.fetchGAS("addBooking", booking);
+    } else {
+       booking.id = this.nextId(this.getBookings());
+       booking.createdAt = new Date().toISOString();
+       booking.status = "pending";
+    }
     const bookings = this.getBookings();
-    booking.id = this.nextId(bookings);
-    booking.createdAt = new Date().toISOString();
-    booking.status = 'pending';
     bookings.push(booking);
     this.setBookings(bookings);
     return booking;
   },
 
-  updateBooking(id, data){
+  async updateBooking(id, data){
+    if (GAS_URL) {
+       await this.fetchGAS("updateBooking", { id, ...data });
+    }
     const bookings = this.getBookings();
     const idx = bookings.findIndex(b => b.id === id);
     if(idx === -1) return null;
@@ -1461,34 +1549,35 @@ const DB = {
     return bookings[idx];
   },
 
-  deleteBooking(id){
+  async deleteBooking(id){
+    if (GAS_URL) {
+       await this.fetchGAS("deleteBooking", { id });
+    }
     const bookings = this.getBookings().filter(b => b.id !== id);
     this.setBookings(bookings);
   },
 
-  // Check time overlap for the same room/date
   hasConflict(roomId, date, timeStart, timeEnd, excludeId = null){
     const bookings = this.getBookings();
     return bookings.some(b => {
       if(b.id === excludeId) return false;
-      if(b.status === 'cancelled') return false;
+      if(b.status === "cancelled") return false;
       if(b.roomId !== roomId || b.date !== date) return false;
       return (timeStart < b.timeEnd && timeEnd > b.timeStart);
     });
   },
 
-  // Check if teacher already has a pending booking
   hasPendingBooking(userId, excludeId = null){
     const bookings = this.getBookings();
-    return bookings.some(b => b.userId === userId && b.status === 'pending' && b.id !== excludeId);
+    return bookings.some(b => b.userId === userId && b.status === "pending" && b.id !== excludeId);
   },
 
   getRoomById(id){ return this.getRooms().find(r => r.id === id); },
   getUserById(id){ return this.getUsers().find(u => u.id === id); },
-  getTeachers(){ return this.getUsers().filter(u => u.role === 'teacher'); }
+  getTeachers(){ return this.getUsers().filter(u => u.role === "teacher"); }
 };
 
-DB.init();
+(async () => { await DB.init(); })();
 
 </script>
 <script>
@@ -1517,6 +1606,7 @@ const PaginationState = {
 document.addEventListener('DOMContentLoaded', () => {
   const session = DB.getSession();
   if(session){
+    session.fullname = session.fullname || session.name || '';
     currentUser = session;
     showApp();
   } else {
@@ -1571,32 +1661,53 @@ function bindLogin(){
   });
 }
 
-function attemptLogin(username, password){
-  Swal.fire({
-    title: 'กำลังเข้าสู่ระบบ...',
-    allowOutsideClick: false,
-    didOpen: () => Swal.showLoading()
-  });
+function showLoginError(msg) {
+  const errDiv = document.getElementById('loginError');
+  const errText = document.getElementById('loginErrorText');
+  if (errDiv && errText) {
+    errText.textContent = msg;
+    errDiv.classList.remove('d-none');
+  }
+}
 
-  setTimeout(() => {
-    const user = DB.login(username, password);
-    if(user){
+function hideLoginError() {
+  const errDiv = document.getElementById('loginError');
+  if (errDiv) errDiv.classList.add('d-none');
+}
+
+async function attemptLogin(username, password){
+  hideLoginError();
+  // แสดง spinner บนปุ่ม
+  const btn = document.getElementById('loginBtn');
+  const btnText = document.getElementById('loginBtnText');
+  const spinner = document.getElementById('loginBtnSpinner');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = 'กำลังเข้าสู่ระบบ...';
+  if (spinner) spinner.classList.remove('d-none');
+
+  try {
+    const user = await DB.login(username, password);
+    if (user) {
+      // Normalize: GAS returns 'name', older code uses 'fullname'
+      user.fullname = user.fullname || user.name || '';
       currentUser = user;
       Swal.fire({
         icon: 'success',
         title: 'เข้าสู่ระบบสำเร็จ',
-        text: `ยินดีต้อนรับ ${user.fullname}`,
+        text: `ยินดีต้อนรับ ${user.name || user.fullname}`,
         timer: 1200,
         showConfirmButton: false
       }).then(() => showApp());
     } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'เข้าสู่ระบบไม่สำเร็จ',
-        text: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'
-      });
+      showLoginError('ชื่อผู้ใช้งานหรือเบอร์โทรศัพท์ไม่ถูกต้อง');
     }
-  }, 500);
+  } catch(err) {
+    showLoginError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'เข้าสู่ระบบ';
+    if (spinner) spinner.classList.add('d-none');
+  }
 }
 
 function logout(){
@@ -1608,7 +1719,7 @@ function logout(){
     confirmButtonText: 'ออกจากระบบ',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#c1493e'
-  }).then(result => {
+  }).then(async result => {
     if(result.isConfirmed){
       Swal.fire({
         title: 'กำลังออกจากระบบ...',
@@ -1690,9 +1801,10 @@ function updatePendingBadge(){
 
 function setupTopbar(){
   if(!currentUser) return;
-  document.getElementById('tuName').textContent = currentUser.fullname;
+  const displayName = currentUser.fullname || currentUser.name || 'ผู้ใช้งาน';
+  document.getElementById('tuName').textContent = displayName;
   document.getElementById('tuRole').textContent = currentUser.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ครู / บุคลากร';
-  document.getElementById('tuAvatar').textContent = currentUser.fullname.charAt(0);
+  document.getElementById('tuAvatar').textContent = displayName.charAt(0).toUpperCase();
 }
 
 const PAGE_TITLES = {
@@ -1747,14 +1859,67 @@ function navigateTo(page){
 }
 
 /* ===================== HELPERS ===================== */
-function fmtDate(iso){
-  if(!iso) return '-';
-  const d = new Date(iso + 'T00:00:00');
+function fmtDate(dateVal){
+  if(!dateVal) return '-';
+  let dateStr = '';
+  // Handle GAS Date objects coming as ISO strings like "2024-07-02T00:00:00.000Z"
+  if(typeof dateVal === 'string' && dateVal.includes('T')){
+    // Extract date part only (YYYY-MM-DD)
+    dateStr = dateVal.split('T')[0];
+  } else if(dateVal instanceof Date){
+    // Date object from GAS
+    const offset = dateVal.getTimezoneOffset() * 60000;
+    dateStr = new Date(dateVal - offset).toISOString().split('T')[0];
+  } else {
+    // Plain string "YYYY-MM-DD" from localStorage
+    dateStr = String(dateVal);
+  }
+  // dateStr is now "YYYY-MM-DD"
+  const parts = dateStr.split('-');
+  if(parts.length < 3) return dateStr;
+  const [y, m, d] = parts.map(Number);
   const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
+  if(!months[m-1]) return dateStr;
+  return `${d} ${months[m-1]} ${y+543}`;
 }
 
-function fmtTime(b){ return `${b.timeStart} - ${b.timeEnd}`; }
+function fmtDateRaw(dateVal){
+  // Returns YYYY-MM-DD string for <input type="date">
+  if(!dateVal) return '';
+  if(typeof dateVal === 'string' && dateVal.includes('T')) return dateVal.split('T')[0];
+  if(dateVal instanceof Date){
+    const offset = dateVal.getTimezoneOffset() * 60000;
+    return new Date(dateVal - offset).toISOString().split('T')[0];
+  }
+  return String(dateVal).split('T')[0];
+}
+
+function fmtTime(b){
+  // Google Sheets returns time as Date object "1899-12-30T04:17:56.000Z"
+  // We need to extract HH:MM from it
+  const extractTime = (t) => {
+    if(!t) return '--:--';
+    if(typeof t === 'string' && t.includes('T')){
+      // ISO datetime string: extract UTC hours/minutes as local Thai time
+      const d = new Date(t);
+      // Add 7 hours for Thai timezone (ICT = UTC+7)
+      const thaiMs = d.getTime() + (7 * 60 * 60 * 1000);
+      const thaiDate = new Date(thaiMs);
+      const hh = String(thaiDate.getUTCHours()).padStart(2,'0');
+      const mm = String(thaiDate.getUTCMinutes()).padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+    if(t instanceof Date){
+      const thaiMs = t.getTime() + (7 * 60 * 60 * 1000);
+      const thaiDate = new Date(thaiMs);
+      const hh = String(thaiDate.getUTCHours()).padStart(2,'0');
+      const mm = String(thaiDate.getUTCMinutes()).padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+    return String(t); // plain "HH:MM" string from localStorage
+  };
+  return `${extractTime(b.timeStart)} - ${extractTime(b.timeEnd)}`;
+}
 
 function roomName(id){
   const r = DB.getRoomById(id);
@@ -1762,7 +1927,8 @@ function roomName(id){
 }
 
 function statusBadge(status){
-  return `<span class="badge-status ${STATUS_CLASS[status]}"><i class="bi ${STATUS_ICON[status]}"></i> ${STATUS_LABEL[status]}</span>`;
+  const st = (status && STATUS_CLASS[status]) ? status : 'pending';
+  return `<span class="badge-status ${STATUS_CLASS[st]}"><i class="bi ${STATUS_ICON[st]}"></i> ${STATUS_LABEL[st]}</span>`;
 }
 
 function equipText(equip){
@@ -2141,7 +2307,7 @@ function renderDashboardTable(mine){
 /* =========================================================
    BOOKING FORM PAGE
    ========================================================= */
-function renderDepartmentField(isExternal, value = '') {
+function renderDepartmentField(isExternal, value = '', forceReadonly = false) {
   const container = document.getElementById('bk_dept_container');
   if(!container) return;
 
@@ -2150,35 +2316,45 @@ function renderDepartmentField(isExternal, value = '') {
   if(isExternal) {
     label.innerHTML = `หน่วยงาน / สังกัดผู้ขอจอง (บุคคลภายนอกพิมพ์ระบุสังกัด) <span class="text-danger">*</span>`;
     container.innerHTML = `
-      <input type="text" class="form-control" id="bk_department" placeholder="พิมพ์ชื่อสังกัด เช่น สพม.สกลนคร, มหาวิทยาลัยราชภัฏสกลนคร ฯลฯ" required value="${value}">
+      <input type="text" class="form-control ${forceReadonly ? 'bg-light' : ''}" id="bk_department" placeholder="พิมพ์ชื่อสังกัด เช่น สพม.สกลนคร, มหาวิทยาลัยราชภัฏสกลนคร ฯลฯ" required value="${value}" ${forceReadonly ? 'readonly' : ''}>
     `;
   } else {
     label.innerHTML = `กลุ่มสาระการเรียนรู้ / ฝ่ายงาน <span class="text-danger">*</span>`;
     
-    let disabledAttr = '';
-    if (currentUser.role === 'teacher') {
-      disabledAttr = 'disabled';
+    // ถ้าเป็นครู (ระบบดึงมาให้) หรือโดนบังคับ readonly (เช่น admin เลือกครู)
+    const isReadonly = currentUser.role === 'teacher' || forceReadonly;
+    
+    if (isReadonly) {
+      container.innerHTML = `
+        <input type="text" class="form-control bg-light" id="bk_department" required value="${value}" readonly placeholder="ระบุกลุ่มสาระฯ">
+      `;
+    } else {
+      container.innerHTML = `
+        <select class="form-select" id="bk_department" required>
+          <option value="">-- เลือกกลุ่มสาระฯ / ฝ่ายงาน --</option>
+          <option value="กลุ่มสาระการเรียนรู้ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
+          <option value="กลุ่มสาระการเรียนรู้คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
+          <option value="กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
+          <option value="กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม</option>
+          <option value="กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
+          <option value="กลุ่มสาระการเรียนรู้ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
+          <option value="กลุ่มสาระการเรียนรู้การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
+          <option value="กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
+          <option value="กลุ่มงานบริหารงานวิชาการ">กลุ่มงานบริหารงานวิชาการ</option>
+          <option value="กลุ่มงานบริหารงบประมาณและงานบุคคล">กลุ่มงานบริหารงบประมาณและงานบุคคล</option>
+          <option value="กลุ่มงานบริหารทั่วไป">กลุ่มงานบริหารทั่วไป</option>
+        </select>
+      `;
+      const select = document.getElementById('bk_department');
+      if (value) {
+        // ถ้าระบุ value มา แต่ไม่มีใน list ให้เพื่ม option เข้าไป
+        const optionExists = Array.from(select.options).some(opt => opt.value === value);
+        if(!optionExists) {
+           select.innerHTML += `<option value="${value}">${value}</option>`;
+        }
+        select.value = value;
+      }
     }
-
-    container.innerHTML = `
-      <select class="form-select" id="bk_department" required ${disabledAttr}>
-        <option value="">-- เลือกกลุ่มสาระฯ / ฝ่ายงาน --</option>
-        <option value="กลุ่มสาระการเรียนรู้ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
-        <option value="กลุ่มสาระการเรียนรู้คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
-        <option value="กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
-        <option value="กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม</option>
-        <option value="กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
-        <option value="กลุ่มสาระการเรียนรู้ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
-        <option value="กลุ่มสาระการเรียนรู้การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
-        <option value="กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
-        <option value="กลุ่มงานบริหารงานวิชาการ">กลุ่มงานบริหารงานวิชาการ</option>
-        <option value="กลุ่มงานบริหารงบประมาณและงานบุคคล">กลุ่มงานบริหารงบประมาณและงานบุคคล</option>
-        <option value="กลุ่มงานบริหารทั่วไป">กลุ่มงานบริหารทั่วไป</option>
-      </select>
-    `;
-
-    const select = document.getElementById('bk_department');
-    if (value) select.value = value;
   }
 }
 
@@ -2195,10 +2371,16 @@ function renderBookingPage(){
   bindPhoneValidation(phoneField);
 
   if(currentUser.role === 'teacher'){
-    nameField.value = currentUser.fullname;
+    nameField.value = currentUser.fullname || currentUser.name || '';
     nameField.readOnly = true;
     nameField.classList.add('bg-light');
-    phoneField.value = currentUser.phone || '';
+    // Normalize phone: add leading 0 if missing (GAS strips it)
+    const rawPhone = String(currentUser.phone || '');
+    const normalized = rawPhone && !rawPhone.startsWith('0') ? '0' + rawPhone : rawPhone;
+    phoneField.value = formatPhoneInput(normalized);
+    phoneField.readOnly = true;
+    phoneField.classList.add('bg-light');
+    phoneField.title = 'เบอร์โทรศัพท์จากบัญชีผู้ใช้ของคุณ';
     updatePhoneValidationUI(phoneField);
     nameHint.textContent = 'ชื่อผู้จองถูกดึงมาจากบัญชีผู้ใช้ของคุณโดยอัตโนมัติ';
 
@@ -2272,13 +2454,14 @@ function renderBookingPage(){
     document.getElementById('bk_teacher_select').addEventListener('change', function(){
       const teacher = DB.getUserById(parseInt(this.value));
       if(teacher){
-        nameField.value = teacher.fullname;
-        phoneField.value = teacher.phone || '';
+        nameField.value = teacher.fullname || teacher.name || '';
+        const tp = String(teacher.phone || '');
+        const normalized = tp && !tp.startsWith('0') ? '0' + tp : tp;
+        phoneField.value = formatPhoneInput(normalized);
         updatePhoneValidationUI(phoneField);
         
-        renderDepartmentField(false, teacher.department || '');
-        const deptField = document.getElementById('bk_department');
-        if (deptField) deptField.disabled = true;
+        renderDepartmentField(false, teacher.department || '', true);
+
       } else {
         nameField.value = '';
         phoneField.value = '';
@@ -2294,11 +2477,16 @@ function renderBookingPage(){
   const endHourInput = document.getElementById('bk_end_hour');
   const endMinInput = document.getElementById('bk_end_min');
 
-  [dateInput, startHourInput, startMinInput, endHourInput, endMinInput].forEach(input => {
+  dateInput.addEventListener('change', () => {
+    updateAvailableHours();
+  });
+  [startHourInput, startMinInput, endHourInput, endMinInput].forEach(input => {
     input.addEventListener('change', () => {
       triggerRoomAvailabilityCheck();
     });
   });
+  // Run once when booking page opens to filter past hours if today
+  updateAvailableHours();
 
   roomSelect.addEventListener('change', () => {
     const val = roomSelect.value;
@@ -2317,6 +2505,46 @@ function renderBookingPage(){
 
   triggerRoomAvailabilityCheck();
   bindBookingForm();
+}
+
+
+function updateAvailableHours() {
+  const dateVal = document.getElementById('bk_date').value;
+  const startSel = document.getElementById('bk_start_hour');
+  const endSel   = document.getElementById('bk_end_hour');
+  if (!startSel || !endSel) return;
+
+  const nowTH = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const todayStr = todayISO(0);
+  const isToday = dateVal === todayStr;
+
+  // current selections
+  const prevStart = startSel.value;
+  const prevEnd   = endSel.value;
+
+  // Build allowed hours
+  const minHour = isToday ? nowTH.getHours() + 1 : 0; // next hour from now if today
+
+  // Re-render options
+  let startHtml = '';
+  let endHtml   = '';
+  for (let h = 0; h < 24; h++) {
+    const hh = String(h).padStart(2, '0');
+    const disabled = isToday && h < minHour ? 'disabled' : '';
+    startHtml += `<option value="${hh}" ${disabled}>${hh}</option>`;
+    endHtml   += `<option value="${hh}" ${disabled}>${hh}</option>`;
+  }
+  startSel.innerHTML = startHtml;
+  endSel.innerHTML   = endHtml;
+
+  // Restore selection if still valid
+  const firstValid = String(minHour).padStart(2, '0');
+  startSel.value = (!isToday || prevStart >= firstValid) ? prevStart : firstValid;
+  const nextHour = String(minHour + 1).padStart(2, '0');
+  endSel.value   = (!isToday || prevEnd > startSel.value) ? prevEnd : (parseInt(startSel.value) + 1 < 24 ? String(parseInt(startSel.value)+1).padStart(2,'0') : startSel.value);
+
+  // Trigger re-check after update
+  triggerRoomAvailabilityCheck();
 }
 
 function triggerRoomAvailabilityCheck() {
@@ -2344,6 +2572,22 @@ function triggerRoomAvailabilityCheck() {
       renderRoomCards(rooms, null, null, null, excludeId);
       return;
     }
+    
+    // ตรวจสอบว่าไม่ใช่เวลาย้อนหลัง
+    const nowTH = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const selectedDate = new Date(date + 'T' + start + ':00');
+    if(date === todayISO(0) && selectedDate < nowTH) {
+      select.disabled = true;
+      select.innerHTML = '<option value="">-- ไม่สามารถจองเวลาที่ผ่านมาแล้วได้ --</option>';
+      renderRoomCards(rooms, null, null, null, excludeId);
+      // แสดง warning ที่ตัวเลือกชั่วโมง
+      const startHourEl = document.getElementById('bk_start_hour');
+      if(startHourEl) { startHourEl.classList.add('is-invalid'); startHourEl.title = 'เวลาที่เลือกผ่านมาแล้ว'; }
+      return;
+    }
+    // ล้าง invalid ถ้าเวลาถูกต้อง
+    const startHourEl2 = document.getElementById('bk_start_hour');
+    if(startHourEl2) { startHourEl2.classList.remove('is-invalid'); startHourEl2.title = ''; }
 
     select.disabled = false;
     let optionsHtml = '<option value="">-- เลือกห้องประชุมที่ว่าง --</option>';
@@ -2413,7 +2657,7 @@ function renderRoomCards(rooms, date = null, start = null, end = null, excludeId
             <div class="room-card-icon" style="background-color: ${r.color}22; color: ${r.color};"><i class="bi bi-door-open-fill"></i></div>
             ${maintenanceBadge}
             <h6>${r.name}</h6>
-            <div class="meta"><i class="bi bi-building"></i> ${r.building} • ${r.floor}</div>
+            <div class="meta"><i class="bi bi-building"></i> ${r.building ? r.building + " • " + r.floor : (r.floor || "ไม่ระบุอาคาร")}</div>
             <div class="meta"><i class="bi bi-people"></i> ความจุ ${r.capacity} คน</div>
             ${statusInfo}
           </div>
@@ -2475,7 +2719,7 @@ function renderRoomCards(rooms, date = null, start = null, end = null, excludeId
           </div>
           ${badgeHtml}
           <h6>${r.name}</h6>
-          <div class="meta"><i class="bi bi-building"></i> ${r.building} • ${r.floor}</div>
+          <div class="meta"><i class="bi bi-building"></i> ${r.building ? r.building + " • " + r.floor : (r.floor || "ไม่ระบุอาคาร")}</div>
           <div class="meta"><i class="bi bi-people"></i> ความจุ ${r.capacity} คน</div>
           ${extraConflictInfo}
         </div>
@@ -2486,9 +2730,9 @@ function renderRoomCards(rooms, date = null, start = null, end = null, excludeId
 
 function bindBookingForm(){
   const form = document.getElementById('bookingForm');
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', async e => {
     e.preventDefault();
-    submitBooking();
+    await submitBooking();
   });
 
   document.getElementById('bk_cancel_edit').addEventListener('click', () => {
@@ -2512,7 +2756,7 @@ function resetBookingForm(){
   phoneField.classList.remove('is-invalid-phone', 'is-valid-phone');
 
   if(currentUser.role === 'teacher'){
-    document.getElementById('bk_name').value = currentUser.fullname;
+    document.getElementById('bk_name').value = currentUser.fullname || currentUser.name || '';
     phoneField.value = currentUser.phone || '';
     updatePhoneValidationUI(phoneField);
     renderDepartmentField(false, currentUser.department || '');
@@ -2535,7 +2779,7 @@ function resetBookingForm(){
   triggerRoomAvailabilityCheck();
 }
 
-function submitBooking(){
+async function submitBooking(){
   const editId = document.getElementById('bookingEditId').value;
   const roomId = parseInt(document.getElementById('bk_room').value);
   const date = document.getElementById('bk_date').value;
@@ -2653,24 +2897,21 @@ function submitBooking(){
     userId, isExternal, bookerName, phone, department, roomId, topic, date, timeStart, timeEnd, equipment
   };
 
-  Swal.fire({
-    title: 'กำลังบันทึกข้อมูล...',
-    allowOutsideClick: false,
-    didOpen: () => Swal.showLoading()
-  });
-
-  setTimeout(() => {
+  Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  try {
     if(editId){
-      DB.updateBooking(parseInt(editId), bookingData);
-      Swal.fire({ icon: 'success', title: 'บันทึกการแก้ไขสำเร็จ', timer: 1300, showConfirmButton: false })
-        .then(() => { resetBookingForm(); navigateTo('mybookings'); });
+      await DB.updateBooking(parseInt(editId), bookingData);
+      await Swal.fire({ icon: 'success', title: 'บันทึกการแก้ไขสำเร็จ', timer: 1300, showConfirmButton: false });
+      resetBookingForm(); navigateTo('mybookings');
     } else {
-      DB.addBooking(bookingData);
-      Swal.fire({ icon: 'success', title: 'ส่งคำขอจองสำเร็จ', text: 'รายการของคุณอยู่ในสถานะ "รออนุมัติ"', timer: 1600, showConfirmButton: false })
-        .then(() => { resetBookingForm(); navigateTo('mybookings'); });
+      await DB.addBooking(bookingData);
+      await Swal.fire({ icon: 'success', title: 'ส่งคำขอจองสำเร็จ', text: 'รายการของคุณอยู่ในสถานะ "รออนุมัติ"', timer: 1600, showConfirmButton: false });
+      resetBookingForm(); navigateTo('mybookings');
     }
     updatePendingBadge();
-  }, 600);
+  } catch(err) {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || 'กรุณาลองใหม่อีกครั้ง' });
+  }
 }
 
 /* =========================================================
@@ -2723,7 +2964,7 @@ function renderMyBookings(){
         <tr>
           <td>${index}</td>
           <td>
-            <strong>${b.bookerName}</strong>
+            <strong>${(b.bookerName === "undefined" || !b.bookerName) ? "ไม่ระบุชื่อ" : b.bookerName}</strong>
             ${b.isExternal ? ' <span class="badge bg-secondary-subtle text-secondary">ภายนอก</span>' : ''}
             <br><span class="text-muted" style="font-size:11.5px;"><i class="bi bi-tag-fill"></i> ${b.department || '-'}</span>
           </td>
@@ -2816,7 +3057,7 @@ function viewBookingDetail(id){
       </div>
     </div>
 
-    <div class="di-created">สร้างรายการเมื่อ: ${new Date(b.createdAt).toLocaleString('th-TH')}</div>
+    <div class="di-created">สร้างรายการเมื่อ: ${b.createdAt ? new Date(b.createdAt).toLocaleString('th-TH') : '-'}</div>
   `;
   new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
@@ -2931,23 +3172,19 @@ function deleteBooking(id){
     confirmButtonText: 'ลบรายการ',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#c1493e'
-  }).then(result => {
+  }).then(async result => {
     if(result.isConfirmed){
       Swal.fire({ title: 'กำลังลบข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      setTimeout(() => {
-        DB.deleteBooking(id);
-        Swal.fire({ icon: 'success', title: 'ลบรายการสำเร็จ', timer: 1200, showConfirmButton: false })
-          .then(() => { 
-            updatePendingBadge(); 
-            if (currentPage === 'mybookings') {
-              renderMyBookings();
-            } else if (currentPage === 'approval') {
-              renderApproval();
-            } else if (currentPage === 'calendar') {
-              renderCalendar();
-            }
-          });
-      }, 500);
+      try {
+        await DB.deleteBooking(id);
+        await Swal.fire({ icon: 'success', title: 'ลบรายการสำเร็จ', timer: 1200, showConfirmButton: false });
+        updatePendingBadge();
+        if (currentPage === 'mybookings') renderMyBookings();
+        else if (currentPage === 'approval') renderApproval();
+        else if (currentPage === 'calendar') renderCalendar();
+      } catch(err) {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+      }
     }
   });
 }
@@ -3005,7 +3242,7 @@ function renderApproval(){
         <tr>
           <td>${index}</td>
           <td>
-            <strong>${b.bookerName}</strong>
+            <strong>${(b.bookerName === "undefined" || !b.bookerName) ? "ไม่ระบุชื่อ" : b.bookerName}</strong>
             ${b.isExternal ? ' <span class="badge bg-secondary-subtle text-secondary">ภายนอก</span>' : ''}
             <br><span class="text-muted" style="font-size:11.5px;"><i class="bi bi-tag-fill"></i> ${b.department || '-'}</span>
           </td>
@@ -3054,14 +3291,17 @@ function approveBooking(id){
     confirmButtonText: 'อนุมัติ',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#2f8f5b'
-  }).then(result => {
+  }).then(async result => {
     if(result.isConfirmed){
       Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      setTimeout(() => {
-        DB.updateBooking(id, { status: 'approved' });
-        Swal.fire({ icon: 'success', title: 'อนุมัติเรียบร้อย', timer: 1200, showConfirmButton: false })
-          .then(() => { updatePendingBadge(); window._apRenderTable && window._apRenderTable(); });
-      }, 500);
+      try {
+        await DB.updateBooking(id, { status: 'approved' });
+        await Swal.fire({ icon: 'success', title: 'อนุมัติเรียบร้อย', timer: 1200, showConfirmButton: false });
+        updatePendingBadge();
+        window._apRenderTable && window._apRenderTable();
+      } catch(err) {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+      }
     }
   });
 }
@@ -3086,15 +3326,18 @@ function rejectBooking(id){
       }
       return reason;
     }
-  }).then(result => {
+  }).then(async result => {
     if(result.isConfirmed){
       const cancelReason = result.value.trim();
       Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      setTimeout(() => {
-        DB.updateBooking(id, { status: 'cancelled', cancelReason: cancelReason });
-        Swal.fire({ icon: 'success', title: 'ยกเลิกคำขอสำเร็จและบันทึกเหตุผลแล้ว', timer: 1200, showConfirmButton: false })
-          .then(() => { updatePendingBadge(); window._apRenderTable && window._apRenderTable(); });
-      }, 500);
+      try {
+        await DB.updateBooking(id, { status: 'cancelled', cancelReason: cancelReason });
+        await Swal.fire({ icon: 'success', title: 'ยกเลิกคำขอสำเร็จและบันทึกเหตุผลแล้ว', timer: 1200, showConfirmButton: false });
+        updatePendingBadge();
+        window._apRenderTable && window._apRenderTable();
+      } catch(err) {
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+      }
     }
   });
 }
@@ -3114,8 +3357,8 @@ function renderRooms(){
       <tr>
         <td>${i+1}</td>
         <td><strong>${r.name}</strong></td>
-        <td>${r.building}</td>
-        <td>${r.floor}</td>
+        <td>${r.building || "-"}</td>
+        <td>${r.floor || "-"}</td>
         <td>${r.capacity || '-'}</td>
         <td>
           <span style="display:inline-block; width:20px; height:20px; background-color:${r.color || '#0e2a4a'}; border-radius:50%; vertical-align:middle; border:1px solid #ddd; margin-right:5px;"></span>
@@ -3204,7 +3447,7 @@ function deleteRoom(id){
     confirmButtonText: 'ลบห้องประชุม',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#c1493e'
-  }).then(result => {
+  }).then(async result => {
     if(result.isConfirmed){
       const rooms = DB.getRooms().filter(r => r.id !== id);
       DB.setRooms(rooms);
@@ -3264,7 +3507,7 @@ function renderReports(){
         <tr>
           <td>${index}</td>
           <td>
-            <strong>${b.bookerName}</strong>
+            <strong>${(b.bookerName === "undefined" || !b.bookerName) ? "ไม่ระบุชื่อ" : b.bookerName}</strong>
             ${b.isExternal ? ' (ภายนอก)' : ''}
             <br><span style="font-size:11px; color:#555;">ฝ่าย/สังกัด: ${b.department || '-'}</span>
           </td>
