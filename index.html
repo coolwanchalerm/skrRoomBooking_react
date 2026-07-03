@@ -1515,12 +1515,13 @@ const DB = {
   },
 
   async addBooking(booking){
+    booking.createdAt = new Date().toISOString();
+    booking.status = "pending";
     if (GAS_URL) {
-       booking = await this.fetchGAS("addBooking", booking);
+       const gasResult = await this.fetchGAS("addBooking", booking);
+       if (gasResult && gasResult.id) booking.id = gasResult.id;
     } else {
        booking.id = this.nextId(this.getBookings());
-       booking.createdAt = new Date().toISOString();
-       booking.status = "pending";
     }
     const bookings = this.getBookings();
     bookings.push(booking);
@@ -2811,9 +2812,14 @@ async function submitBooking(){
     return;
   }
 
+  const excludeId = editId ? parseInt(editId) : null;
+  const existing = excludeId ? DB.getBookings().find(b => b.id === excludeId) : null;
+
   if(date < todayISO(0)){
-    Swal.fire('ไม่สามารถจองได้', 'ไม่สามารถจองห้องประชุมย้อนหลังวันที่ปัจจุบันได้', 'warning');
-    return;
+    if(!existing || existing.date !== date) {
+      Swal.fire('ไม่สามารถจองได้', 'ไม่สามารถจองห้องประชุมย้อนหลังวันที่ปัจจุบันได้', 'warning');
+      return;
+    }
   }
 
   if(timeStart >= timeEnd){
@@ -2828,8 +2834,6 @@ async function submitBooking(){
 
   const equipRaw = document.getElementById('bk_equipment').value.trim();
   const equipment = equipRaw ? equipRaw.split(',').map(s => s.trim()).filter(s => s) : [];
-
-  const excludeId = editId ? parseInt(editId) : null;
 
   if(DB.hasConflict(roomId, date, timeStart, timeEnd, excludeId)){
     Swal.fire({
@@ -3099,12 +3103,12 @@ function editBooking(id){
         document.getElementById('bk_end_min').value = endParts[1];
       }
     }
+    
+    // อัปเดตชั่วโมงที่ให้เลือกหลังจากตั้งค่า date และ time ปัจจุบัน
+    updateAvailableHours();
 
-    renderDepartmentField(b.isExternal, b.department || '');
-    if (!b.isExternal && (currentUser.role === 'teacher' || b.userId)) {
-      const deptField = document.getElementById('bk_department');
-      if (deptField) deptField.disabled = true;
-    }
+    const forceReadonly = !b.isExternal && (currentUser.role === 'teacher' || !!b.userId);
+    renderDepartmentField(b.isExternal, b.department || '', forceReadonly);
 
     triggerRoomAvailabilityCheck();
 
@@ -3114,7 +3118,9 @@ function editBooking(id){
     document.getElementById('bk_topic').value = b.topic;
 
     const phoneField = document.getElementById('bk_phone');
-    phoneField.value = b.phone;
+    const tp = String(b.phone || '');
+    const normalized = tp && !tp.startsWith('0') ? '0' + tp : tp;
+    phoneField.value = formatPhoneInput(normalized);
     updatePhoneValidationUI(phoneField);
 
     document.getElementById('bk_equipment').value = (b.equipment || []).join(', ');
