@@ -811,11 +811,8 @@ body{
         </div>
       </div>
       <div class="panel-body">
-        <div class="cal-legend mb-3">
-          <span class="cal-legend-item"><span class="cal-dot dot-pending"></span> รออนุมัติ</span>
-          <span class="cal-legend-item"><span class="cal-dot dot-approved"></span> อนุมัติ</span>
-          <span class="cal-legend-item"><span class="cal-dot dot-cancelled"></span> ยกเลิก</span>
-          <span class="ms-auto d-none d-md-inline text-muted" style="font-size:12px;"><i class="bi bi-info-circle"></i> สามารถคลิกที่ชื่อรายการบนปฏิทินเพื่อดูรายละเอียดได้ทันที</span>
+        <div class="cal-legend mb-3" id="calLegendContainer">
+          <!-- Legend will be rendered dynamically based on room colors -->
         </div>
         <div class="cal-grid" id="calGrid"></div>
       </div>
@@ -3762,8 +3759,24 @@ function renderCalendar(){
     renderCalendarDayList();
   });
 
+  renderCalendarLegend();
   buildCalendarGrid();
   renderCalendarDayList();
+}
+
+function renderCalendarLegend(){
+  const container = document.getElementById('calLegendContainer');
+  if(!container) return;
+  
+  const rooms = DB.getRooms();
+  let html = '';
+  rooms.forEach(r => {
+    const color = r.color || 'var(--gold)';
+    html += `<span class="cal-legend-item"><span class="cal-dot" style="background:${color};"></span> ${r.name}</span>`;
+  });
+  html += `<span class="ms-auto d-none d-md-inline text-muted" style="font-size:12px;"><i class="bi bi-info-circle"></i> สามารถคลิกที่ชื่อรายการบนปฏิทินเพื่อดูรายละเอียดได้ทันที</span>`;
+  
+  container.innerHTML = html;
 }
 
 function buildCalendarGrid(){
