@@ -1670,18 +1670,25 @@ function resetIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
   if (!currentUser) return; // Only track idle time if logged in
   idleTimer = setTimeout(() => {
-    // Session expired due to inactivity
+    // Session expired due to inactivity, silent logout
+    DB.clearSession();
+    currentUser = null;
+    if (idleTimer) clearTimeout(idleTimer);
+    
+    // Check if Swal is currently open (like a form) and close it
+    if (Swal.isVisible()) {
+      Swal.close();
+    }
+    
+    showLogin();
+    
+    // Optionally notify them after they are on the login screen
     Swal.fire({
-      icon: 'warning',
+      icon: 'info',
       title: 'หมดเวลาเซสชัน',
-      text: 'ระบบได้นำคุณออกอัตโนมัติเนื่องจากไม่มีการใช้งานเกิน 10 นาที',
-      confirmButtonText: 'ตกลง',
-      allowOutsideClick: false
-    }).then(() => {
-      DB.clearSession();
-      currentUser = null;
-      if (idleTimer) clearTimeout(idleTimer);
-      showLogin();
+      text: 'ระบบนำคุณออกอัตโนมัติเนื่องจากไม่มีการใช้งานเกิน 10 นาที เพื่อความปลอดภัย',
+      timer: 3000,
+      showConfirmButton: false
     });
   }, IDLE_TIMEOUT_MS);
 }
@@ -1741,6 +1748,7 @@ async function attemptLogin(username, password){
       // Normalize: GAS returns 'name', older code uses 'fullname'
       user.fullname = user.fullname || user.name || '';
       currentUser = user;
+      resetIdleTimer(); // <-- Start auto logout timer upon successful login
       Swal.fire({
         icon: 'success',
         title: 'เข้าสู่ระบบสำเร็จ',
