@@ -1046,13 +1046,37 @@ body{
     <div class="panel">
       <div class="panel-head flex-wrap gap-2">
         <h6 id="myBookingsTitle"><i class="bi bi-card-checklist"></i> รายการจองของฉัน</h6>
-        <div class="d-flex flex-wrap gap-2">
-          <select class="form-select form-select-sm" id="mb_filter_status" style="width:150px">
-            <option value="">ทุกสถานะ</option>
-            <option value="pending">รออนุมัติ</option>
-            <option value="approved">อนุมัติ</option>
-            <option value="cancelled">ยกเลิก</option>
-          </select>
+      </div>
+      <div class="panel-body border-bottom bg-light py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label form-label-sm">จากวันที่</label>
+            <input type="date" class="form-control form-control-sm" id="mb_from">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm">ถึงวันที่</label>
+            <input type="date" class="form-control form-control-sm" id="mb_to">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm">ห้องประชุม</label>
+            <select class="form-select form-select-sm" id="mb_room"><option value="">ทุกห้อง</option></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm">สถานะ</label>
+            <select class="form-select form-select-sm" id="mb_filter_status">
+              <option value="">ทุกสถานะ</option>
+              <option value="pending">รออนุมัติ</option>
+              <option value="approved">อนุมัติ</option>
+              <option value="cancelled">ยกเลิก</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label form-label-sm">ค้นหา</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" id="mb_search" placeholder="พิมพ์ชื่อผู้จอง, หัวข้อ, สังกัด...">
+            </div>
+          </div>
         </div>
       </div>
       <div class="panel-body p-0">
@@ -1143,18 +1167,7 @@ body{
             <label class="form-label form-label-sm">กลุ่มสาระฯ / ฝ่ายงาน</label>
             <select class="form-select form-select-sm" id="rp_dept">
               <option value="">ทุกกลุ่มงาน / บุคคลภายนอก</option>
-              <option value="กลุ่มสาระการเรียนรู้ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
-              <option value="กลุ่มสาระการเรียนรู้คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
-              <option value="กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
-              <option value="กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม</option>
-              <option value="กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
-              <option value="กลุ่มสาระการเรียนรู้ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
-              <option value="กลุ่มสาระการเรียนรู้การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
-              <option value="กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
-              <option value="กลุ่มงานบริหารงานวิชาการ">กลุ่มงานบริหารงานวิชาการ</option>
-              <option value="กลุ่มงานบริหารงบประมาณและงานบุคคล">กลุ่มงานบริหารงบประมาณและงานบุคคล</option>
-              <option value="กลุ่มงานบริหารทั่วไป">กลุ่มงานบริหารทั่วไป</option>
-              <option value="บุคคลภายนอก">บุคคลภายนอก / อื่นๆ</option>
+              <!-- Departments will be injected dynamically -->
             </select>
           </div>
           <div class="col-md-2">
@@ -1171,17 +1184,13 @@ body{
         <!-- รายงานสรุปสถิติสำคัญด้านบนรายงาน (Live Stats Panel) -->
         <div class="p-3 mb-3 rounded" style="background: var(--cream); border: 1px solid var(--line);">
           <div class="row text-center g-2">
-            <div class="col-md-4 border-end border-md-0">
+            <div class="col-md-6 border-end border-md-0">
               <small class="text-muted" style="font-size: 11.5px; font-weight: 600;"><i class="bi bi-trophy"></i> ห้องประชุมที่ใช้งานบ่อยที่สุด</small>
               <h5 class="text-navy font-display mb-0 mt-1" id="rpStatMostUsedRoom" style="font-weight:700; font-size: 14.5px;">-</h5>
             </div>
-            <div class="col-md-4 border-end border-md-0">
+            <div class="col-md-6">
               <small class="text-muted" style="font-size: 11.5px; font-weight: 600;"><i class="bi bi-people-fill"></i> สังกัดที่ใช้งานบ่อยที่สุด</small>
               <h5 class="text-navy font-display mb-0 mt-1" id="rpStatMostActiveDept" style="font-weight:700; font-size: 14.5px;">-</h5>
-            </div>
-            <div class="col-md-4">
-              <small class="text-muted" style="font-size: 11.5px; font-weight: 600;"><i class="bi bi-clock-history"></i> ชั่วโมงการใช้งานห้องประชุมสะสม</small>
-              <h5 class="text-navy font-display mb-0 mt-1" id="rpStatTotalHours" style="font-weight:700; font-size: 14.5px;">-</h5>
             </div>
           </div>
         </div>
@@ -2920,10 +2929,36 @@ function renderMyBookings(){
     ? '<i class="bi bi-card-checklist"></i> รายการจองทั้งหมด'
     : '<i class="bi bi-card-checklist"></i> รายการจองของฉัน';
 
+  const rooms = DB.getRooms();
+  const roomSelect = document.getElementById('mb_room');
+  if (roomSelect && roomSelect.options.length <= 1) {
+    roomSelect.innerHTML = '<option value="">ทุกห้อง</option>' + rooms.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+
   const renderTable = () => {
-    const statusFilter = document.getElementById('mb_filter_status').value;
+    const from = document.getElementById('mb_from') ? document.getElementById('mb_from').value : '';
+    const to = document.getElementById('mb_to') ? document.getElementById('mb_to').value : '';
+    const roomId = document.getElementById('mb_room') ? document.getElementById('mb_room').value : '';
+    const statusFilter = document.getElementById('mb_filter_status') ? document.getElementById('mb_filter_status').value : '';
+    const search = document.getElementById('mb_search') ? document.getElementById('mb_search').value.toLowerCase().trim() : '';
+
     let rows = visibleBookings();
-    if(statusFilter) rows = rows.filter(b => b.status === statusFilter);
+    
+    rows = rows.filter(b => {
+      let ok = true;
+      if(from) ok = ok && b.date >= from;
+      if(to) ok = ok && b.date <= to;
+      if(roomId) ok = ok && b.roomId === parseInt(roomId);
+      if(statusFilter) ok = ok && b.status === statusFilter;
+      if(search) {
+        const booker = (b.bookerName || '').toLowerCase();
+        const topic = (b.topic || '').toLowerCase();
+        const dept = (b.department || '').toLowerCase();
+        ok = ok && (booker.includes(search) || topic.includes(search) || dept.includes(search));
+      }
+      return ok;
+    });
+
     rows = rows.sort((a,b) => new Date(b.date) - new Date(a.date));
 
     const tbody = document.querySelector('#mbTable tbody');
@@ -2987,10 +3022,23 @@ function renderMyBookings(){
     renderPaginationControls('mbPagination', 'mybookings', totalItems, renderTable);
   };
 
-  document.getElementById('mb_filter_status').addEventListener('change', () => {
-    PaginationState.mybookings.currentPage = 1;
-    renderTable();
+  ['mb_from', 'mb_to', 'mb_room', 'mb_filter_status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => {
+        PaginationState.mybookings.currentPage = 1;
+        renderTable();
+      });
+    }
   });
+
+  const searchEl = document.getElementById('mb_search');
+  if (searchEl) {
+    searchEl.addEventListener('input', () => {
+      PaginationState.mybookings.currentPage = 1;
+      renderTable();
+    });
+  }
   renderTable();
 }
 
@@ -3499,6 +3547,18 @@ function renderReports(){
   const roomSelect = document.getElementById('rp_room');
   roomSelect.innerHTML = '<option value="">ทุกห้อง</option>' + rooms.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
 
+  const users = DB.getUsers();
+  const depts = [...new Set(users.map(u => u.department).filter(Boolean))].sort();
+  const deptSelect = document.getElementById('rp_dept');
+  if (deptSelect) {
+    let deptHtml = '<option value="">ทุกกลุ่มงาน / บุคคลภายนอก</option>';
+    depts.forEach(d => {
+      deptHtml += `<option value="${d}">${d}</option>`;
+    });
+    deptHtml += '<option value="บุคคลภายนอก">หน่วยงานภายนอก</option>';
+    deptSelect.innerHTML = deptHtml;
+  }
+
   const renderTable = () => {
     const from = document.getElementById('rp_from').value;
     const to = document.getElementById('rp_to').value;
@@ -3511,7 +3571,13 @@ function renderReports(){
       if(from) ok = ok && b.date >= from;
       if(to) ok = ok && b.date <= to;
       if(roomId) ok = ok && b.roomId === parseInt(roomId);
-      if(dept) ok = ok && b.department === dept;
+      if (dept) {
+        if (dept === 'บุคคลภายนอก') {
+          ok = ok && b.isExternal === true;
+        } else {
+          ok = ok && (!b.isExternal && b.department === dept);
+        }
+      }
       if(status) ok = ok && b.status === status;
       return ok;
     });
@@ -3575,12 +3641,9 @@ function renderReports(){
 
 // ฟังก์ชันคำนวณสถิติและตัวแปรรายงานสำคัญแบบ Real-time
 function calculateReportStats(rows) {
-  // ใช้ทุกสถานะ (pending + approved) เพื่อเป็น basis สถิติ เว้น cancelled
-  const activeRows = rows.filter(b => b.status !== 'cancelled');
-
-  // 1. หาห้องประชุมที่ถูกจองใช้งานบ่อยสุด
+  // 1. หาห้องประชุมที่ถูกจองใช้งานบ่อยสุดจากรายการที่แสดง
   const roomCounts = {};
-  activeRows.forEach(b => {
+  rows.forEach(b => {
     roomCounts[b.roomId] = (roomCounts[b.roomId] || 0) + 1;
   });
   let maxRoomId = null;
@@ -3597,9 +3660,9 @@ function calculateReportStats(rows) {
     : 'ไม่มีข้อมูล';
   document.getElementById('rpStatMostUsedRoom').textContent = mostUsedText;
 
-  // 2. หาสังกัด/กลุ่มงานที่จองห้องเยอะที่สุด
+  // 2. หาสังกัด/กลุ่มงานที่จองห้องเยอะที่สุดจากรายการที่แสดง
   const deptCounts = {};
-  activeRows.forEach(b => {
+  rows.forEach(b => {
     const key = b.isExternal ? 'บุคคลภายนอก' : (b.department || 'ไม่ระบุสังกัด');
     deptCounts[key] = (deptCounts[key] || 0) + 1;
   });
@@ -3615,20 +3678,6 @@ function calculateReportStats(rows) {
     ? `${maxDeptName.replace('กลุ่มสาระการเรียนรู้', '').trim()} (${maxDeptCount} ครั้ง)`
     : 'ไม่มีข้อมูล';
   document.getElementById('rpStatMostActiveDept').textContent = mostActiveText;
-
-  // 3. รวมจำนวนชั่วโมงในการจัดประชุมสะสมรวม (ทุกสถานะยกเว้นยกเลิก)
-  let totalMinutes = 0;
-  activeRows.forEach(b => {
-    if (b.timeStart && b.timeEnd) {
-      const [sh, sm] = b.timeStart.split(':').map(Number);
-      const [eh, em] = b.timeEnd.split(':').map(Number);
-      const diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
-      if (diffMinutes > 0) totalMinutes += diffMinutes;
-    }
-  });
-  const totalHours = totalMinutes / 60;
-  document.getElementById('rpStatTotalHours').textContent =
-    totalHours > 0 ? `${totalHours.toFixed(1)} ชั่วโมง` : '0 ชั่วโมง';
 }
 
 // ใช้ระบบส่งออกไฟล์ผ่าน html2canvas เพื่อเรนเดอร์รูปภาพ HTML สวยงามลงหน้า PDF หมดห่วงเรื่องภาษาไทยเพี้ยน
