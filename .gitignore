@@ -1,18 +1,24 @@
-# macOS
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Backup & temp files
-*.bak
-*backup*
-*copy*
-fix_scripts.py
-*.py
-
-# Editor
-.vscode/
-.idea/
-
-# Node (ถ้าใช้ในอนาคต)
-node_modules/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
