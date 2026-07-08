@@ -21,7 +21,7 @@ export default function Topbar({ onToggleSidebar }: TopbarProps) {
   const location = useLocation();
 
   const title = pageTitles[location.pathname] || 'ระบบจองห้องประชุม';
-  const initial = user?.name ? user.name.charAt(0) : 'U';
+  const initial = user?.fullname ? user.fullname.charAt(0) : 'U';
 
   return (
     <header className="topbar">
@@ -33,7 +33,7 @@ export default function Topbar({ onToggleSidebar }: TopbarProps) {
       {user && (
         <div className="topbar-user">
           <div className="text-end d-none d-sm-block">
-            <div className="tu-name">{user.name}</div>
+            <div className="tu-name">{user.fullname}</div>
             <div className="tu-role">{user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งานทั่วไป'}</div>
           </div>
           <div className="tu-avatar">{initial}</div>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Swal from 'sweetalert2';
 
 // Note: For now, we mock the login. Later we will connect this to the actual API service.
 export default function Login() {

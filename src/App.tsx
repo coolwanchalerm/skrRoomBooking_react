@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AppShell from './components/AppShell';
 import Login from './pages/Login';
@@ -13,17 +14,8 @@ import Rooms from './pages/admin/Rooms';
 
 import './index.css'; // Make sure to load global styles
 
-// Protect routes that require login
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-};
-
 // Redirect to dashboard if already logged in
-const PublicRoute = ({ children }: { children: JSX.Element }) => {
+const PublicRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated } = useAuth();
   if (isAuthenticated) {
     return <Navigate to="/" replace />;

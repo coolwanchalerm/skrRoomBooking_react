@@ -10,11 +10,6 @@ export default function MyBookings() {
   const navigate = useNavigate();
 
   // -------------------------
-  // USER STATE (Original UI)
-  // -------------------------
-  const [activeTab, setActiveTab] = useState('all');
-  
-  // -------------------------
   // ADMIN STATE (New UI)
   // -------------------------
   const [fromDate, setFromDate] = useState('');
@@ -148,25 +143,6 @@ export default function MyBookings() {
     }
   };
 
-  const handleCancel = (id: number) => {
-    Swal.fire({
-      title: 'ยืนยันการยกเลิก?',
-      text: "คุณต้องการยกเลิกการจองนี้ใช่หรือไม่?",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'ยืนยัน',
-      cancelButtonText: 'ปิด'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        DB.updateBooking(id, { status: 'cancelled' }).then(() => {
-          Swal.fire('สำเร็จ', 'ยกเลิกการจองเรียบร้อยแล้ว', 'success');
-          loadData();
-        });
-      }
-    });
-  };
 
   const handleDelete = (id: number) => {
     Swal.fire({

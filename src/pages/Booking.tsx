@@ -147,7 +147,7 @@ export default function Booking() {
       
       if (user && !isAdmin) {
         // Pre-fill for regular user
-        setBookerName(user.fullname || user.name || '');
+        setBookerName(user.fullname || user.fullname || '');
         
         let p = String(user.phone || '');
         if (p && !p.startsWith('0')) p = '0' + p;
@@ -188,7 +188,7 @@ export default function Booking() {
     if (selectedTeacherId) {
       const teacher = allUsers.find(u => String(u.id) === selectedTeacherId);
       if (teacher) {
-        setBookerName(teacher.fullname || teacher.name || '');
+        setBookerName(teacher.fullname || teacher.fullname || '');
         let p = String(teacher.phone || '');
         if (p && !p.startsWith('0')) p = '0' + p;
         setPhone(formatPhone(p));
@@ -208,9 +208,9 @@ export default function Booking() {
     
     let isPending = false;
     if (bookerType === 'teacher' && selectedTeacherId) {
-      isPending = bookings.some(b => b.id !== editBookingId && b.userId === parseInt(selectedTeacherId) && b.status === 'pending');
+      isPending = bookings.some((b: any) => b.id !== editBookingId && b.userId === parseInt(selectedTeacherId) && b.status === 'pending');
     } else if (bookerType === 'external' && bookerName && phone) {
-      isPending = bookings.some(b => b.id !== editBookingId && b.isExternal && b.bookerName === bookerName && b.phone === phone && b.status === 'pending');
+      isPending = bookings.some((b: any) => b.id !== editBookingId && b.isExternal && b.bookerName === bookerName && b.phone === phone && b.status === 'pending');
     }
     
     setTargetHasPending(isPending);
@@ -299,7 +299,7 @@ export default function Booking() {
     
     // Validate if the target person already has a pending booking (ignoring the current edit booking)
     const bookings = DB.getBookings();
-    const hasPendingForTarget = bookings.some(b => 
+    const hasPendingForTarget = bookings.some((b: any) => 
       b.id !== editBookingId && b.status === 'pending' && 
       (
         (bookingUserId && b.userId === bookingUserId) || 
@@ -444,7 +444,7 @@ export default function Booking() {
         badgeHtml = <span className="badge bg-danger-subtle text-danger mb-2"><i className="bi bi-x-circle-fill"></i> ไม่ว่างในช่วงเวลานี้</span>;
         cardStyle = { ...cardStyle, opacity: 0.65, cursor: 'not-allowed', backgroundColor: '#fafafa' };
         
-        const activeBooking = DB.getBookings().find(b =>
+        const activeBooking = DB.getBookings().find((b: any) =>
           b.roomId === r.id &&
           b.date === date &&
           b.status !== 'cancelled' &&
