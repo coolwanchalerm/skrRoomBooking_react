@@ -161,7 +161,11 @@ export const DB = {
     if (GAS_URL) {
       try {
         const user = await this.fetchGAS("login", { username, password: inputPhone });
-        if (user) { this.setSession(user); return user; }
+        if (user) { 
+          user.fullname = user.fullname || user.name || '';
+          this.setSession(user); 
+          return user; 
+        }
       } catch (e) {
         console.error("GAS login failed:", e);
       }
@@ -173,7 +177,11 @@ export const DB = {
       u.username === username &&
       normalizePhone(u.phone) === inputPhone
     );
-    if(user){ this.setSession(user); return user; }
+    if(user){ 
+      user.fullname = user.fullname || user.name || '';
+      this.setSession(user); 
+      return user; 
+    }
     return null;
   },
 
