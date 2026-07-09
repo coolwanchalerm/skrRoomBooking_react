@@ -10,11 +10,12 @@ export default function Booking() {
   const navigate = useNavigate();
   const editBookingId = location.state?.editBookingId;
   
+  const [step, setStep] = useState(1);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   const [date, setDate] = useState('');
-  const [startHour, setStartHour] = useState('09');
-  const [startMin, setStartMin] = useState('00');
-  const [endHour, setEndHour] = useState('12');
-  const [endMin, setEndMin] = useState('00');
+  const [startTimeStr, setStartTimeStr] = useState('09:00');
+  const [endTimeStr, setEndTimeStr] = useState('12:00');
   const [room, setRoom] = useState('');
   
   const [bookerName, setBookerName] = useState(user?.fullname || '');
@@ -45,53 +46,9 @@ export default function Booking() {
   
   const isValidPhone = (val: string) => /^\d{3}-\d{3}-\d{4}$/.test(val);
 
-  // Generate hours 00-23 and minutes
-  const allHours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  const minutes = ['00', '15', '30', '45'];
-
   const getTodayISO = () => {
     return todayISO(0);
   };
-
-  const getAvailableStartHours = () => {
-    if (date === getTodayISO()) {
-      const currentHour = new Date().getHours();
-      return allHours.filter(h => parseInt(h) >= currentHour);
-    }
-    return allHours;
-  };
-
-  const getAvailableEndHours = () => {
-    const minHour = parseInt(startHour);
-    if (date === getTodayISO()) {
-      const currentHour = new Date().getHours();
-      return allHours.filter(h => parseInt(h) >= Math.max(minHour, currentHour));
-    }
-    return allHours.filter(h => parseInt(h) >= minHour);
-  };
-
-  // Sync hours if they are now invalid (e.g. when changing date to today)
-  useEffect(() => {
-    if (date === getTodayISO()) {
-      const currentHour = new Date().getHours();
-      const currentStart = parseInt(startHour);
-      if (currentStart < currentHour) {
-        setStartHour(currentHour.toString().padStart(2, '0'));
-      }
-      
-      const currentEnd = parseInt(endHour);
-      const minEnd = Math.max(currentStart < currentHour ? currentHour : currentStart, currentHour);
-      if (currentEnd < minEnd) {
-        setEndHour(minEnd.toString().padStart(2, '0'));
-      }
-    } else {
-      const currentStart = parseInt(startHour);
-      const currentEnd = parseInt(endHour);
-      if (currentEnd < currentStart) {
-        setEndHour(startHour);
-      }
-    }
-  }, [date, startHour, endHour]);
 
   useEffect(() => {
     // Load rooms from DB
@@ -110,16 +67,8 @@ export default function Booking() {
       const b = DB.getBookings().find((x: any) => x.id === editBookingId);
       if (b) {
         setDate(b.date);
-        if (b.timeStart) {
-          const [h, m] = b.timeStart.split(':');
-          setStartHour(h);
-          setStartMin(m);
-        }
-        if (b.timeEnd) {
-          const [h, m] = b.timeEnd.split(':');
-          setEndHour(h);
-          setEndMin(m);
-        }
+        if (b.timeStart) setStartTimeStr(b.timeStart);
+        if (b.timeEnd) setEndTimeStr(b.timeEnd);
         setRoom(String(b.roomId));
         setTopic(b.topic);
         setEquipment(Array.isArray(b.equipment) ? b.equipment.join(', ') : b.equipment || '');
@@ -146,32 +95,19 @@ export default function Booking() {
       }
       
       if (user && !isAdmin) {
-        // Pre-fill for regular user
         setBookerName(user.fullname || user.fullname || '');
-        
         let p = String(user.phone || '');
         if (p && !p.startsWith('0')) p = '0' + p;
         setPhone(formatPhone(p));
-        
         setDepartment(user.department || '');
       }
     }
   }, [user, editBookingId, isAdmin]);
 
-  // Handle booker type change for admins (only if NOT in edit mode, or if they change it)
+  // Handle booker type change for admins
   useEffect(() => {
     if (!isAdmin || editBookingId) return;
-    if (bookerType === 'teacher') {
-      setSelectedTeacherId('');
-      setBookerName('');
-      setPhone('');
-      setDepartment('');
-    } else if (bookerType === 'external') {
-      setSelectedTeacherId('');
-      setBookerName('');
-      setPhone('');
-      setDepartment('');
-    } else {
+    if (bookerType === 'teacher' || bookerType === 'external' || !bookerType) {
       setSelectedTeacherId('');
       setBookerName('');
       setPhone('');
@@ -179,12 +115,9 @@ export default function Booking() {
     }
   }, [bookerType, isAdmin, editBookingId]);
 
-  // Handle teacher selection for admins (only if NOT in edit mode initially, but we want it to react if they change selection)
+  // Handle teacher selection for admins
   useEffect(() => {
     if (!isAdmin || bookerType !== 'teacher') return;
-    
-    // If edit mode and selectedTeacherId matches the booking's userId, don't overwrite with default teacher phone
-    // Actually, it's fine to overwrite, because if they change it we want it to update.
     if (selectedTeacherId) {
       const teacher = allUsers.find(u => String(u.id) === selectedTeacherId);
       if (teacher) {
@@ -205,90 +138,69 @@ export default function Booking() {
   useEffect(() => {
     if (!isAdmin) return;
     const bookings = DB.getBookings();
-    
     let isPending = false;
     if (bookerType === 'teacher' && selectedTeacherId) {
       isPending = bookings.some((b: any) => b.id !== editBookingId && b.userId === parseInt(selectedTeacherId) && b.status === 'pending');
     } else if (bookerType === 'external' && bookerName && phone) {
       isPending = bookings.some((b: any) => b.id !== editBookingId && b.isExternal && b.bookerName === bookerName && b.phone === phone && b.status === 'pending');
     }
-    
     setTargetHasPending(isPending);
   }, [isAdmin, bookerType, selectedTeacherId, bookerName, phone, editBookingId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Validate time
-    const startTime = parseInt(startHour) * 60 + parseInt(startMin);
-    const endTime = parseInt(endHour) * 60 + parseInt(endMin);
-    
-    if (startTime >= endTime) {
-      Swal.fire({
-        icon: 'error',
-        title: 'เวลาไม่ถูกต้อง',
-        text: 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น',
-        confirmButtonColor: '#0e2a4a',
-      });
-      setLoading(false);
+  const handleNextStep1 = () => {
+    setErrorMessage('');
+    if (!date) {
+      setErrorMessage('กรุณาเลือกวันที่ต้องการจอง');
       return;
     }
-
-    if (!isValidPhone(phone)) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'รูปแบบเบอร์โทรไม่ถูกต้อง',
-        text: 'กรุณากรอกเบอร์โทรศัพท์ในรูปแบบ 0XX-XXX-XXXX เช่น 081-234-5678',
-        confirmButtonColor: '#0e2a4a',
-      });
-      setLoading(false);
+    if (!startTimeStr || !endTimeStr) {
+      setErrorMessage('กรุณาระบุเวลาให้ครบถ้วน');
       return;
     }
-
-    // ตรวจสอบว่าไม่ใช่เวลาย้อนหลังของวันนี้
+    if (startTimeStr >= endTimeStr) {
+      setErrorMessage('เวลาสิ้นสุดการจอง ต้องมากกว่าเวลาเริ่มต้น');
+      return;
+    }
     if (date === getTodayISO()) {
       const now = new Date();
-      const currentHour = now.getHours();
-      const currentMin = now.getMinutes();
-      const currentTime = currentHour * 60 + currentMin;
-
-      if (startTime < currentTime) {
-        Swal.fire({
-          icon: 'error',
-          title: 'เวลาไม่ถูกต้อง',
-          text: 'ไม่สามารถจองเวลาที่ผ่านมาแล้วได้',
-          confirmButtonColor: '#0e2a4a',
-        });
-        setLoading(false);
+      const currentHour = now.getHours().toString().padStart(2, '0');
+      const currentMin = now.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${currentHour}:${currentMin}`;
+      if (startTimeStr < currentTime) {
+        setErrorMessage('ไม่สามารถจองเวลาที่ผ่านมาแล้วได้');
         return;
       }
     }
+    setStep(2);
+  };
 
+  const handleNextStep2 = () => {
+    setErrorMessage('');
     if (!room) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'กรุณาเลือกห้องประชุม',
-        text: 'โปรดเลือกห้องประชุมที่ว่างในส่วนที่ 2',
-        confirmButtonColor: '#0e2a4a',
-      });
+      setErrorMessage('กรุณาเลือกห้องประชุมที่ว่างก่อนดำเนินการต่อ');
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setLoading(true);
+    
+    if (!isValidPhone(phone)) {
+      setErrorMessage('รูปแบบเบอร์โทรไม่ถูกต้อง กรุณากรอกในรูปแบบ 0XX-XXX-XXXX');
       setLoading(false);
       return;
     }
 
-    // Check room conflicts
-    if (DB.hasConflict(parseInt(room), date, `${startHour}:${startMin}`, `${endHour}:${endMin}`, editBookingId)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'ห้องประชุมถูกจองแล้ว',
-        text: 'ห้องประชุมนี้มีการจองในวันและเวลาดังกล่าวแล้ว กรุณาเลือกเวลาหรือห้องอื่น',
-        confirmButtonColor: '#0e2a4a',
-      });
+    if (DB.hasConflict(parseInt(room), date, startTimeStr, endTimeStr, editBookingId)) {
+      setErrorMessage('ห้องประชุมมีการถูกจองตัดหน้าในช่วงเวลาดังกล่าวแล้ว กรุณาเลือกเวลาหรือห้องอื่น');
       setLoading(false);
+      setStep(2); // Go back to room selection
       return;
     }
 
-    // Determine target user logic
     const isExternal = isAdmin && bookerType === 'external';
     let bookingUserId = user?.id;
     if (isAdmin && bookerType === 'teacher' && selectedTeacherId) {
@@ -297,7 +209,6 @@ export default function Booking() {
       bookingUserId = undefined; 
     }
     
-    // Validate if the target person already has a pending booking (ignoring the current edit booking)
     const bookings = DB.getBookings();
     const hasPendingForTarget = bookings.some((b: any) => 
       b.id !== editBookingId && b.status === 'pending' && 
@@ -308,17 +219,11 @@ export default function Booking() {
     );
 
     if (hasPendingForTarget) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'ไม่สามารถจองได้',
-        text: 'บุคคลนี้มีรายการจองที่รออนุมัติอยู่แล้ว กรุณารอการอนุมัติรายการเดิมก่อนทำการจองใหม่',
-        confirmButtonColor: '#0e2a4a',
-      });
+      setErrorMessage('บุคคลนี้มีรายการจองที่รออนุมัติอยู่แล้ว ไม่สามารถจองซ้ำได้จนกว่าจะได้รับการอนุมัติ');
       setLoading(false);
       return;
     }
 
-    // Submit to DB
     const newBooking = {
       userId: bookingUserId,
       isExternal,
@@ -328,57 +233,24 @@ export default function Booking() {
       roomId: parseInt(room),
       topic,
       date,
-      timeStart: `${startHour}:${startMin}`,
-      timeEnd: `${endHour}:${endMin}`,
+      timeStart: startTimeStr,
+      timeEnd: endTimeStr,
       equipment
     };
 
     try {
       if (editBookingId) {
         await DB.updateBooking(editBookingId, newBooking);
-        Swal.fire({
-          icon: 'success',
-          title: 'แก้ไขสำเร็จ',
-          text: 'ข้อมูลการจองของคุณถูกอัปเดตเรียบร้อยแล้ว',
-          confirmButtonColor: '#13a446',
-        }).then(() => {
-          navigate('/my-bookings');
-        });
+        Swal.fire({ icon: 'success', title: 'แก้ไขสำเร็จ', confirmButtonColor: '#13a446' }).then(() => navigate('/my-bookings'));
       } else {
         await DB.addBooking(newBooking);
-        Swal.fire({
-          icon: 'success',
-          title: 'จองห้องประชุมสำเร็จ',
-          text: 'ส่งคำขอจองห้องประชุมของคุณเรียบร้อยแล้ว กรุณารอการอนุมัติ',
-          confirmButtonColor: '#13a446',
-        }).then(() => {
-          // Reset form
-          setDate('');
-          setRoom('');
-          setTopic('');
-          setEquipment('');
-          if (isAdmin) {
-            setBookerType('');
-            setSelectedTeacherId('');
-            setBookerName('');
-            setPhone('');
-            setDepartment('');
-          }
-          
-          // Only set hasPending for the current user if they booked for themselves
-          if (!isAdmin || bookingUserId === user?.id) {
-            setHasPending(true); 
-          }
+        Swal.fire({ icon: 'success', title: 'จองห้องสำเร็จ', text: 'รอการอนุมัติ', confirmButtonColor: '#13a446' }).then(() => {
+          if (!isAdmin || bookingUserId === user?.id) setHasPending(true); 
           navigate('/my-bookings');
         });
       }
     } catch (e) {
-      Swal.fire({
-        icon: 'error',
-        title: 'เกิดข้อผิดพลาด',
-        text: 'ไม่สามารถบันทึกการจองได้ กรุณาลองใหม่อีกครั้ง',
-        confirmButtonColor: '#0e2a4a',
-      });
+      setErrorMessage('เกิดข้อผิดพลาด ไม่สามารถบันทึกการจองได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
     }
@@ -388,86 +260,41 @@ export default function Booking() {
     return rooms.map(r => {
       const isMaintenance = r.status === 'maintenance';
       
-      // If date/time not selected yet
-      if (!date || !startHour || !endHour) {
-        const cardStyle = isMaintenance 
-          ? { borderLeft: '5px solid #999', opacity: 0.6, cursor: 'not-allowed', backgroundColor: '#f5f5f5' }
-          : { borderLeft: `5px solid ${r.color || 'var(--gold)'}` };
-          
-        return (
-          <div className="col-md-6 col-lg-3" key={r.id}>
-            <div className="room-card" style={cardStyle}>
-              <div className="room-card-icon" style={{ backgroundColor: `${r.color}22`, color: r.color }}>
-                <i className="bi bi-door-open-fill"></i>
-              </div>
-              {isMaintenance && <span className="badge bg-warning text-dark mb-2"><i className="bi bi-tools"></i> ปิดปรับปรุง</span>}
-              <h6>{r.name}</h6>
-              <div className="meta"><i className="bi bi-building"></i> {r.building ? `${r.building} • ${r.floor}` : (r.floor || "ไม่ระบุอาคาร")}</div>
-              <div className="meta"><i className="bi bi-people"></i> ความจุ {r.capacity} คน</div>
-              
-              <div className="mt-2 text-muted text-center py-2 rounded" style={{ fontSize: '11.5px', background: '#f0ede6' }}>
-                {isMaintenance ? (
-                  <><i className="bi bi-cone-striped"></i> ห้องนี้ไม่สามารถจองได้ในขณะนี้</>
-                ) : (
-                  <><i className="bi bi-clock"></i> ระบุวัน-เวลาก่อนเพื่อเช็คห้องว่าง</>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // If date/time selected
-      const tStart = `${startHour}:${startMin}`;
-      const tEnd = `${endHour}:${endMin}`;
-      
-      const startTime = parseInt(startHour) * 60 + parseInt(startMin);
-      const endTime = parseInt(endHour) * 60 + parseInt(endMin);
-      
-      const isTimeInvalid = startTime >= endTime;
-      const isConflicted = !isMaintenance && !isTimeInvalid && DB.hasConflict(r.id, date, tStart, tEnd);
-      
+      const isConflicted = !isMaintenance && DB.hasConflict(r.id, date, startTimeStr, endTimeStr, editBookingId);
       const isSelected = room === String(r.id);
       
       let badgeHtml = null;
-      let cardStyle: any = { borderLeft: `5px solid ${r.color || 'var(--gold)'}` };
+      let cardStyle: any = { borderLeft: `5px solid ${r.color || 'var(--gold)'}`, transition: '0.2s', cursor: 'pointer' };
       let clickHandler = undefined;
       let extraConflictInfo = null;
 
       if (isMaintenance) {
-        badgeHtml = <span className="badge bg-warning text-dark mb-2"><i className="bi bi-tools"></i> ปิดปรับปรุง — ไม่สามารถจองได้</span>;
+        badgeHtml = <span className="badge bg-warning text-dark mb-2"><i className="bi bi-tools"></i> ปิดปรับปรุง</span>;
         cardStyle = { ...cardStyle, opacity: 0.55, cursor: 'not-allowed', backgroundColor: '#f5f5f5', borderLeftColor: '#aaa' };
-      } else if (isTimeInvalid) {
-        badgeHtml = <span className="badge bg-secondary-subtle text-secondary mb-2"><i className="bi bi-exclamation-circle-fill"></i> เวลาไม่ถูกต้อง</span>;
-        cardStyle = { ...cardStyle, opacity: 0.65, cursor: 'not-allowed', backgroundColor: '#fafafa' };
       } else if (isConflicted) {
         badgeHtml = <span className="badge bg-danger-subtle text-danger mb-2"><i className="bi bi-x-circle-fill"></i> ไม่ว่างในช่วงเวลานี้</span>;
         cardStyle = { ...cardStyle, opacity: 0.65, cursor: 'not-allowed', backgroundColor: '#fafafa' };
         
         const activeBooking = DB.getBookings().find((b: any) =>
-          b.roomId === r.id &&
-          b.date === date &&
-          b.status !== 'cancelled' &&
-          (tStart < b.timeEnd && tEnd > b.timeStart)
+          b.roomId === r.id && b.date === date && b.status !== 'cancelled' &&
+          (startTimeStr < b.timeEnd && endTimeStr > b.timeStart) && b.id !== editBookingId
         );
         
         if (activeBooking) {
           extraConflictInfo = (
             <div className="mt-2 p-2 bg-light rounded text-start" style={{ fontSize: '11px', borderLeft: '2px solid var(--red)' }}>
-              <strong>ผู้จอง:</strong> {activeBooking.bookerName}<br/>
-              <strong>ฝ่าย/กลุ่มสาระ:</strong> {activeBooking.department || '-'}<br/>
-              <strong>ช่วงเวลา:</strong> {activeBooking.timeStart} - {activeBooking.timeEnd}<br/>
-              <strong>หัวข้อ:</strong> {activeBooking.topic}
+              <strong>ติดคิว:</strong> {activeBooking.timeStart}-{activeBooking.timeEnd} <br/>
+              <strong>โดย:</strong> {activeBooking.bookerName}
             </div>
           );
         }
       } else {
-        badgeHtml = <span className="badge bg-success-subtle text-success mb-2"><i className="bi bi-check-circle-fill"></i> ว่าง (คลิกเลือกห้องนี้)</span>;
-        cardStyle.cursor = 'pointer';
+        badgeHtml = <span className="badge bg-success-subtle text-success mb-2"><i className="bi bi-check-circle-fill"></i> ว่าง</span>;
         if (isSelected) {
           cardStyle.borderColor = 'var(--gold)';
           cardStyle.backgroundColor = 'var(--gold-soft)';
           cardStyle.boxShadow = '0 4px 12px rgba(217,164,64,0.25)';
+          cardStyle.transform = 'scale(1.02)';
         }
         clickHandler = () => setRoom(String(r.id));
       }
@@ -490,248 +317,281 @@ export default function Booking() {
   };
 
   return (
-    <div className="page-fade">
-      <div className="panel">
-        <div className="panel-head">
-          <h6><i className="bi bi-calendar-plus"></i> แบบฟอร์มการจองห้องประชุม</h6>
+    <div className="page-fade pb-5">
+      
+      {/* STEPPER HEADER */}
+      <div className="stepper-wrapper mb-4 mx-auto" style={{ maxWidth: '600px' }}>
+        <div className={`stepper-item ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+          <div className="step-counter">1</div>
+          <div className="step-name">เลือกเวลา</div>
         </div>
-        <div className="panel-body">
+        <div className={`stepper-item ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
+          <div className="step-counter">2</div>
+          <div className="step-name">เลือกห้อง</div>
+        </div>
+        <div className={`stepper-item ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
+          <div className="step-counter">3</div>
+          <div className="step-name">รายละเอียด</div>
+        </div>
+      </div>
+
+      <div className="panel" style={{ overflow: 'visible' }}>
+        <div className="panel-body p-4">
           
           {hasPending && !isAdmin && (
             <div className="alert alert-warning">
-              <i className="bi bi-exclamation-triangle-fill"></i>
-              คุณมีรายการที่ <strong>รออนุมัติ</strong> อยู่แล้ว 1 รายการ กรุณารอแอดมินอนุมัติก่อนทำการจองครั้งใหม่
+              <i className="bi bi-exclamation-triangle-fill"></i> คุณมีรายการที่ <strong>รออนุมัติ</strong> อยู่แล้ว 1 รายการ กรุณารอแอดมินอนุมัติก่อนทำการจองใหม่
             </div>
           )}
 
           <form onSubmit={handleSubmit} style={{ pointerEvents: (!isAdmin && hasPending) ? 'none' : 'auto', opacity: (!isAdmin && hasPending) ? 0.6 : 1 }}>
             
-            {/* SECTION 1: เลือกวันและเวลา */}
-            <div className="p-3 mb-4 rounded" style={{ background: 'var(--cream)', border: '1px solid var(--line)' }}>
-              <h5 className="text-navy font-display mb-3" style={{ fontSize: '16px', fontWeight: 700 }}>
-                <span className="badge bg-primary-soft me-2" style={{ backgroundColor: 'var(--navy)', color: '#fff' }}>ส่วนที่ 1</span> 
-                เลือกวันและเวลาที่ต้องการจอง
-              </h5>
-              <div className="row g-3">
-                <div className="col-md-4">
-                  <label className="form-label">วันที่ต้องการจอง <span className="text-danger">*</span></label>
-                  <input 
-                    type="date" 
-                    className="form-control" 
-                    required 
-                    min={getTodayISO()}
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value);
-                      setRoom(''); // reset room selection
-                    }}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">เวลาเริ่มใช้งาน <span className="text-danger">*</span></label>
-                  <div className="row g-2 align-items-center">
-                    <div className="col-6 d-flex align-items-center gap-2">
-                      <select className="form-select" value={startHour} onChange={(e) => { setStartHour(e.target.value); setRoom(''); }} required>
-                        {getAvailableStartHours().map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <span className="text-muted" style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>ชั่วโมง</span>
-                    </div>
-                    <div className="col-6 d-flex align-items-center gap-2">
-                      <select className="form-select" value={startMin} onChange={(e) => { setStartMin(e.target.value); setRoom(''); }} required>
-                        {minutes.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                      <span className="text-muted" style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>นาที</span>
-                    </div>
+            {/* STEP 1: Date & Time */}
+            {step === 1 && (
+              <div className="step-content animation-fade-in mx-auto" style={{ maxWidth: '600px' }}>
+                <h5 className="text-navy font-display mb-4 text-center fw-bold">เลือกวันและเวลาที่ต้องการ</h5>
+                <div className="row g-4">
+                  <div className="col-12">
+                    <label className="form-label fw-bold">วันที่ต้องการจอง <span className="text-danger">*</span></label>
+                    <input 
+                      type="date" 
+                      className="form-control form-control-lg" 
+                      required 
+                      min={getTodayISO()}
+                      value={date}
+                      onChange={(e) => { setDate(e.target.value); setRoom(''); }}
+                      style={{ borderRadius: '12px' }}
+                    />
                   </div>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">เวลาสิ้นสุดการใช้งาน <span className="text-danger">*</span></label>
-                  <div className="row g-2 align-items-center">
-                    <div className="col-6 d-flex align-items-center gap-2">
-                      <select className="form-select" value={endHour} onChange={(e) => { setEndHour(e.target.value); setRoom(''); }} required>
-                        {getAvailableEndHours().map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <span className="text-muted" style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>ชั่วโมง</span>
-                    </div>
-                    <div className="col-6 d-flex align-items-center gap-2">
-                      <select className="form-select" value={endMin} onChange={(e) => { setEndMin(e.target.value); setRoom(''); }} required>
-                        {minutes.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                      <span className="text-muted" style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>นาที</span>
-                    </div>
+                  <div className="col-md-6 col-6">
+                    <label className="form-label fw-bold">เวลาเริ่ม <span className="text-danger">*</span></label>
+                    <input 
+                      type="time" 
+                      className="form-control form-control-lg" 
+                      required 
+                      value={startTimeStr}
+                      onChange={(e) => { setStartTimeStr(e.target.value); setRoom(''); }}
+                      style={{ borderRadius: '12px' }}
+                    />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 2: เลือกห้องประชุม */}
-            <div className="p-3 mb-4 rounded" style={{ background: 'var(--cream)', border: '1px solid var(--line)' }}>
-              <h5 className="text-navy font-display mb-3" style={{ fontSize: '16px', fontWeight: 700 }}>
-                <span className="badge bg-primary-soft me-2" style={{ backgroundColor: 'var(--navy)', color: '#fff' }}>ส่วนที่ 2</span> 
-                ตรวจสอบและเลือกห้องประชุมที่ว่าง
-              </h5>
-              <div className="row g-3" id="roomCardsContainer">
-                {renderRoomCards()}
-              </div>
-            </div>
-
-            {/* SECTION 3: ข้อมูลผู้จอง */}
-            <div className="p-3 mb-4 rounded" style={{ background: 'var(--cream)', border: '1px solid var(--line)' }}>
-              <h5 className="text-navy font-display mb-3" style={{ fontSize: '16px', fontWeight: 700 }}>
-                <span className="badge bg-primary-soft me-2" style={{ backgroundColor: 'var(--navy)', color: '#fff' }}>ส่วนที่ 3</span> 
-                ข้อมูลผู้จองและรายละเอียดการประชุม
-              </h5>
-              
-              {targetHasPending && isAdmin && (
-                <div className="alert alert-warning mb-3">
-                  <i className="bi bi-exclamation-triangle-fill"></i>
-                  บุคคลที่คุณกำลังเลือกทำรายการให้ มีรายการที่ <strong>รออนุมัติ</strong> อยู่แล้ว กรุณารอการอนุมัติรายการเดิมก่อนทำการจองใหม่
-                </div>
-              )}
-
-              <div className="row g-3">
-                {isAdmin && (
-                  <>
-                    <div className="col-md-6">
-                      <label className="form-label">ประเภทผู้จอง <span className="text-danger">*</span></label>
-                      <select className="form-select" value={bookerType} onChange={(e) => setBookerType(e.target.value)} required>
-                        <option value="">-- เลือกประเภทผู้จอง --</option>
-                        <option value="teacher">ครู / บุคลากรในโรงเรียน</option>
-                        <option value="external">บุคคลภายนอก</option>
-                      </select>
-                    </div>
-                    {bookerType === 'teacher' && (
-                      <div className="col-md-6">
-                        <label className="form-label">เลือกชื่อครู/บุคลากร <span className="text-danger">*</span></label>
-                        <select className="form-select" value={selectedTeacherId} onChange={(e) => setSelectedTeacherId(e.target.value)} required>
-                          <option value="">-- เลือกชื่อ --</option>
-                          {allUsers.map(u => (
-                            <option key={u.id} value={u.id}>{u.fullname || u.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div className="col-md-6">
-                  <label className="form-label">ชื่อผู้จอง <span className="text-danger">*</span></label>
-                  <input 
-                    type="text" 
-                    className={`form-control ${(!isAdmin || bookerType !== 'external') ? 'bg-light' : ''}`} 
-                    placeholder={!isAdmin ? '' : (bookerType === 'external' ? 'พิมพ์ชื่อ-สกุล บุคคลภายนอก' : 'กรุณาเลือกประเภทผู้จองก่อน')}
-                    required 
-                    readOnly={!isAdmin || bookerType !== 'external'}
-                    value={bookerName}
-                    onChange={(e) => setBookerName(e.target.value)}
-                  />
-                  {isAdmin && (!bookerType || bookerType === 'teacher') && (
-                    <div className="form-text">
-                      {!bookerType ? 'กรุณาเลือกประเภทผู้จองด้านบนก่อน' : 'ชื่อและเบอร์โทรจะถูกดึงมาจากข้อมูลครู/บุคลากรที่เลือก'}
-                    </div>
-                  )}
+                  <div className="col-md-6 col-6">
+                    <label className="form-label fw-bold">เวลาสิ้นสุด <span className="text-danger">*</span></label>
+                    <input 
+                      type="time" 
+                      className="form-control form-control-lg" 
+                      required 
+                      value={endTimeStr}
+                      onChange={(e) => { setEndTimeStr(e.target.value); setRoom(''); }}
+                      style={{ borderRadius: '12px' }}
+                    />
+                  </div>
                 </div>
                 
-                <div className="col-md-6">
-                  <label className="form-label">เบอร์โทรศัพท์ <span className="text-danger">*</span></label>
-                  <input 
-                    type="tel" 
-                    className={`form-control ${(!isAdmin || bookerType !== 'external') ? 'bg-light' : ''} ${phone && !isValidPhone(phone) ? 'is-invalid' : ''}`} 
-                    placeholder="0XX-XXX-XXXX" 
-                    required 
-                    maxLength={12}
-                    readOnly={!isAdmin || bookerType !== 'external'}
-                    value={phone}
-                    onChange={(e) => setPhone(formatPhone(e.target.value))}
-                  />
-                  <div className="form-text">รูปแบบ: 0XX-XXX-XXXX (เช่น 081-234-5678)</div>
-                  <div className="invalid-feedback">รูปแบบเบอร์โทรไม่ถูกต้อง กรุณากรอกในรูปแบบ 0XX-XXX-XXXX</div>
-                </div>
+                {errorMessage && (
+                  <div className="alert alert-danger mt-4 d-flex align-items-center" style={{ borderRadius: '12px' }}>
+                    <i className="bi bi-exclamation-circle-fill me-2 fs-5"></i>
+                    {errorMessage}
+                  </div>
+                )}
 
-                <div className="col-md-6">
-                  <label className="form-label">กลุ่มสาระการเรียนรู้ / ฝ่ายงาน <span className="text-danger">*</span></label>
-                  {(isAdmin && bookerType === 'external') ? (
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="ระบุชื่อหน่วยงาน/องค์กรภายนอก"
-                      required 
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                    />
-                  ) : (
-                    <select 
-                      className="form-select bg-light" 
-                      required 
-                      disabled 
-                      value={department}
-                    >
-                      <option value="">-- เลือกกลุ่มสาระฯ / ฝ่ายงาน --</option>
-                      <option value="กลุ่มสาระการเรียนรู้ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
-                      <option value="กลุ่มสาระการเรียนรู้คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
-                      <option value="กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
-                      <option value="กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม</option>
-                      <option value="กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
-                      <option value="กลุ่มสาระการเรียนรู้ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
-                      <option value="กลุ่มสาระการเรียนรู้การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
-                      <option value="กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
-                      <option value="กลุ่มงานบริหารงานวิชาการ">กลุ่มงานบริหารงานวิชาการ</option>
-                      <option value="กลุ่มงานบริหารงบประมาณและงานบุคคล">กลุ่มงานบริหารงบประมาณและงานบุคคล</option>
-                      <option value="กลุ่มงานบริหารทั่วไป">กลุ่มงานบริหารทั่วไป</option>
-                      {/* In case department from DB is not in list, it will show blank but we pre-populated it. Let's add it if it's custom. */}
-                      {department && ![
-                        "กลุ่มสาระการเรียนรู้ภาษาไทย", "กลุ่มสาระการเรียนรู้คณิตศาสตร์", "กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี",
-                        "กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม", "กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา", "กลุ่มสาระการเรียนรู้ศิลปะ",
-                        "กลุ่มสาระการเรียนรู้การงานอาชีพ", "กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ", "กลุ่มงานบริหารงานวิชาการ",
-                        "กลุ่มงานบริหารงบประมาณและงานบุคคล", "กลุ่มงานบริหารทั่วไป"
-                      ].includes(department) && (
-                        <option value={department}>{department}</option>
-                      )}
-                    </select>
-                  )}
-                </div>
-
-                <div className="col-md-6">
-                  <label className="form-label">หัวข้อการประชุม <span className="text-danger">*</span></label>
-                  <textarea 
-                    className="form-control" 
-                    placeholder="ระบุหัวข้อรายละเอียดการประชุม..." 
-                    rows={3} 
-                    required
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                  ></textarea>
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label">อุปกรณ์ที่ต้องการ</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    placeholder="เช่น โปรเจคเตอร์, ไมโครโฟน 2 ตัว, ลำโพง (พิมพ์คั่นด้วยจุลภาค)"
-                    value={equipment}
-                    onChange={(e) => setEquipment(e.target.value)}
-                  />
-                  <div className="form-text">ระบุอุปกรณ์ที่ต้องการใช้ในการประชุม คั่นด้วยเครื่องหมายจุลภาค (,)</div>
+                <div className="d-flex justify-content-end mt-4">
+                  <button type="button" className="btn btn-primary-soft px-4 py-2 w-100 w-sm-auto" style={{ borderRadius: '50px' }} onClick={handleNextStep1}>
+                    ถัดไป <i className="bi bi-arrow-right"></i>
+                  </button>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Form Actions */}
-            <div className="col-12 d-flex justify-content-end gap-2 mt-2">
-              {editBookingId && (
-                <button type="button" className="btn btn-secondary text-white" onClick={() => navigate('/my-bookings')}>
-                  <i className="bi bi-x-circle"></i> ยกเลิก
-                </button>
-              )}
-              <button type="submit" className="btn btn-primary-soft" disabled={loading || (!isAdmin && hasPending) || (isAdmin && targetHasPending)}>
-                {loading ? (
-                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                ) : (
-                  editBookingId ? <><i className="bi bi-save"></i> บันทึกการแก้ไข</> : <><i className="bi bi-send-check"></i> ส่งคำขอจอง</>
+            {/* STEP 2: Room Selection */}
+            {step === 2 && (
+              <div className="step-content animation-fade-in">
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5 className="text-navy font-display mb-0 fw-bold">เลือกห้องประชุม</h5>
+                  <div className="badge bg-light text-dark px-3 py-2" style={{ borderRadius: '20px' }}>
+                    <i className="bi bi-clock"></i> {date} | {startTimeStr} - {endTimeStr}
+                  </div>
+                </div>
+                
+                <div className="row g-3" id="roomCardsContainer">
+                  {renderRoomCards()}
+                </div>
+
+                {errorMessage && (
+                  <div className="alert alert-danger mt-4 d-flex align-items-center" style={{ borderRadius: '12px' }}>
+                    <i className="bi bi-exclamation-circle-fill me-2 fs-5"></i>
+                    {errorMessage}
+                  </div>
                 )}
-              </button>
-            </div>
+
+                <div className="d-flex justify-content-between mt-4">
+                  <button type="button" className="btn btn-light px-4 py-2" style={{ borderRadius: '50px' }} onClick={() => { setStep(1); setErrorMessage(''); }}>
+                    <i className="bi bi-arrow-left"></i> ย้อนกลับ
+                  </button>
+                  <button type="button" className="btn btn-primary-soft px-4 py-2" style={{ borderRadius: '50px' }} onClick={handleNextStep2} disabled={!room}>
+                    ถัดไป <i className="bi bi-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Booker Details */}
+            {step === 3 && (
+              <div className="step-content animation-fade-in mx-auto" style={{ maxWidth: '800px' }}>
+                <h5 className="text-navy font-display mb-4 text-center fw-bold">ข้อมูลผู้จองและรายละเอียด</h5>
+                
+                {targetHasPending && isAdmin && (
+                  <div className="alert alert-warning mb-4">
+                    <i className="bi bi-exclamation-triangle-fill"></i> บุคคลที่คุณกำลังเลือกทำรายการให้ มีรายการที่ <strong>รออนุมัติ</strong> อยู่แล้ว 
+                  </div>
+                )}
+
+                <div className="row g-4">
+                  {isAdmin && (
+                    <>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">ประเภทผู้จอง <span className="text-danger">*</span></label>
+                        <select className="form-select form-select-lg" value={bookerType} onChange={(e) => setBookerType(e.target.value)} required style={{ borderRadius: '12px' }}>
+                          <option value="">-- เลือกประเภทผู้จอง --</option>
+                          <option value="teacher">ครู / บุคลากรในโรงเรียน</option>
+                          <option value="external">บุคคลภายนอก</option>
+                        </select>
+                      </div>
+                      {bookerType === 'teacher' && (
+                        <div className="col-md-6">
+                          <label className="form-label fw-bold">เลือกชื่อครู/บุคลากร <span className="text-danger">*</span></label>
+                          <select className="form-select form-select-lg" value={selectedTeacherId} onChange={(e) => setSelectedTeacherId(e.target.value)} required style={{ borderRadius: '12px' }}>
+                            <option value="">-- เลือกชื่อ --</option>
+                            {allUsers.map(u => (
+                              <option key={u.id} value={u.id}>{u.fullname || u.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-bold">ชื่อผู้จอง <span className="text-danger">*</span></label>
+                    <input 
+                      type="text" 
+                      className={`form-control form-control-lg ${(!isAdmin || bookerType !== 'external') ? 'bg-light' : ''}`} 
+                      placeholder={!isAdmin ? '' : (bookerType === 'external' ? 'พิมพ์ชื่อ-สกุล บุคคลภายนอก' : 'กรุณาเลือกประเภทผู้จองก่อน')}
+                      required 
+                      readOnly={!isAdmin || bookerType !== 'external'}
+                      value={bookerName}
+                      onChange={(e) => setBookerName(e.target.value)}
+                      style={{ borderRadius: '12px' }}
+                    />
+                  </div>
+                  
+                  <div className="col-md-6">
+                    <label className="form-label fw-bold">เบอร์โทรศัพท์ <span className="text-danger">*</span></label>
+                    <input 
+                      type="tel" 
+                      className={`form-control form-control-lg ${(!isAdmin || bookerType !== 'external') ? 'bg-light' : ''} ${phone && !isValidPhone(phone) ? 'is-invalid' : ''}`} 
+                      placeholder="0XX-XXX-XXXX" 
+                      required 
+                      maxLength={12}
+                      readOnly={!isAdmin || bookerType !== 'external'}
+                      value={phone}
+                      onChange={(e) => setPhone(formatPhone(e.target.value))}
+                      style={{ borderRadius: '12px' }}
+                    />
+                    <div className="invalid-feedback">รูปแบบเบอร์โทรไม่ถูกต้อง กรุณากรอกในรูปแบบ 0XX-XXX-XXXX</div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-bold">กลุ่มสาระการเรียนรู้ / ฝ่ายงาน <span className="text-danger">*</span></label>
+                    {(isAdmin && bookerType === 'external') ? (
+                      <input 
+                        type="text" 
+                        className="form-control form-control-lg" 
+                        placeholder="ระบุชื่อหน่วยงาน/องค์กรภายนอก"
+                        required 
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        style={{ borderRadius: '12px' }}
+                      />
+                    ) : (
+                      <select 
+                        className="form-select form-select-lg bg-light" 
+                        required 
+                        disabled 
+                        value={department}
+                        style={{ borderRadius: '12px' }}
+                      >
+                        <option value="">-- เลือกกลุ่มสาระฯ / ฝ่ายงาน --</option>
+                        <option value="กลุ่มสาระการเรียนรู้ภาษาไทย">กลุ่มสาระการเรียนรู้ภาษาไทย</option>
+                        <option value="กลุ่มสาระการเรียนรู้คณิตศาสตร์">กลุ่มสาระการเรียนรู้คณิตศาสตร์</option>
+                        <option value="กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี</option>
+                        <option value="กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม">กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม</option>
+                        <option value="กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา">กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา</option>
+                        <option value="กลุ่มสาระการเรียนรู้ศิลปะ">กลุ่มสาระการเรียนรู้ศิลปะ</option>
+                        <option value="กลุ่มสาระการเรียนรู้การงานอาชีพ">กลุ่มสาระการเรียนรู้การงานอาชีพ</option>
+                        <option value="กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ">กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ</option>
+                        <option value="กลุ่มงานบริหารงานวิชาการ">กลุ่มงานบริหารงานวิชาการ</option>
+                        <option value="กลุ่มงานบริหารงบประมาณและงานบุคคล">กลุ่มงานบริหารงบประมาณและงานบุคคล</option>
+                        <option value="กลุ่มงานบริหารทั่วไป">กลุ่มงานบริหารทั่วไป</option>
+                        {department && ![
+                          "กลุ่มสาระการเรียนรู้ภาษาไทย", "กลุ่มสาระการเรียนรู้คณิตศาสตร์", "กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี",
+                          "กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม", "กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา", "กลุ่มสาระการเรียนรู้ศิลปะ",
+                          "กลุ่มสาระการเรียนรู้การงานอาชีพ", "กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ", "กลุ่มงานบริหารงานวิชาการ",
+                          "กลุ่มงานบริหารงบประมาณและงานบุคคล", "กลุ่มงานบริหารทั่วไป"
+                        ].includes(department) && (
+                          <option value={department}>{department}</option>
+                        )}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label fw-bold">หัวข้อการประชุม <span className="text-danger">*</span></label>
+                    <textarea 
+                      className="form-control form-control-lg" 
+                      placeholder="ระบุหัวข้อรายละเอียดการประชุม..." 
+                      required
+                      rows={3}
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      style={{ borderRadius: '12px', resize: 'none' }}
+                    ></textarea>
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label fw-bold">อุปกรณ์ที่ต้องการ</label>
+                    <textarea 
+                      className="form-control form-control-lg" 
+                      placeholder="เช่น โปรเจคเตอร์, ไมโครโฟน 2 ตัว (พิมพ์คั่นด้วยจุลภาค)"
+                      rows={2}
+                      value={equipment}
+                      onChange={(e) => setEquipment(e.target.value)}
+                      style={{ borderRadius: '12px', resize: 'none' }}
+                    ></textarea>
+                  </div>
+                </div>
+
+                {errorMessage && (
+                  <div className="alert alert-danger mt-4 d-flex align-items-center" style={{ borderRadius: '12px' }}>
+                    <i className="bi bi-exclamation-circle-fill me-2 fs-5"></i>
+                    {errorMessage}
+                  </div>
+                )}
+
+                <div className="d-flex justify-content-between mt-4">
+                  <button type="button" className="btn btn-light px-4 py-2" style={{ borderRadius: '50px' }} onClick={() => { setStep(2); setErrorMessage(''); }}>
+                    <i className="bi bi-arrow-left"></i> ย้อนกลับ
+                  </button>
+                  <button type="submit" className="btn btn-primary-soft px-4 py-2" style={{ borderRadius: '50px' }} disabled={loading || (!isAdmin && hasPending) || (isAdmin && targetHasPending)}>
+                    {loading ? (
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    ) : (
+                      editBookingId ? <><i className="bi bi-save"></i> บันทึกการแก้ไข</> : <><i className="bi bi-send-check"></i> ยืนยันการจอง</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+            
           </form>
         </div>
       </div>

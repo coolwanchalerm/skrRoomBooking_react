@@ -32,11 +32,6 @@ export default function Login() {
     }
   };
 
-  const handleDemoClick = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-  };
-
   return (
     <div className="login-screen">
       <div className="login-bg-shape"></div>
@@ -90,26 +85,6 @@ export default function Login() {
             {loading && <span className="spinner-border spinner-border-sm ms-2" role="status"></span>}
           </button>
         </form>
-
-        <div className="login-demo">
-          <p className="mb-1 fw-semibold"><i className="bi bi-info-circle"></i> บัญชีทดลองใช้งาน</p>
-          <div className="d-flex flex-wrap gap-2 mt-2">
-            <button 
-              className="btn btn-demo" 
-              onClick={() => handleDemoClick('admin', '0812345678')}
-              type="button"
-            >
-              แอดมิน: admin / 0812345678
-            </button>
-            <button 
-              className="btn btn-demo" 
-              onClick={() => handleDemoClick('teacher1', '0898765432')}
-              type="button"
-            >
-              ครู: teacher1 / 0898765432
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ export default function Approval() {
   
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -120,17 +121,30 @@ export default function Approval() {
 
   const handleReject = (id: number) => {
     Swal.fire({
-      title: 'ระบุเหตุผลการยกเลิก',
-      text: 'กรุณากรอกเหตุผลในการปฏิเสธคำขอหรือยกเลิกการจองห้องประชุมนี้',
-      input: 'textarea',
-      inputPlaceholder: 'พิมพ์เหตุผล เช่น ติดภารกิจด่วนโรงเรียน, ห้องประชุมงดให้บริการชั่วคราว...',
+      title: 'ปฏิเสธการจองนี้?',
+      html: `
+        <p class="text-muted small mb-3">โปรดระบุเหตุผลเพื่อแจ้งให้ผู้จองทราบ</p>
+        <div class="d-flex flex-wrap gap-2 justify-content-center mb-3">
+          <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="document.getElementById('rejectReason').value='มีการใช้งานห้องประชุมด่วน (ส่วนกลาง)'">ใช้งานด่วน (ส่วนกลาง)</button>
+          <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="document.getElementById('rejectReason').value='ปิดปรับปรุง / ซ่อมบำรุงอุปกรณ์'">ปิดปรับปรุงห้อง</button>
+          <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="document.getElementById('rejectReason').value='มีผู้จองคิวในเวลาดังกล่าวไปก่อนแล้ว'">เวลาจองซ้ำซ้อน</button>
+          <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="document.getElementById('rejectReason').value='ข้อมูลการจองไม่ครบถ้วน / ขาดผู้รับผิดชอบ'">ข้อมูลไม่ครบ</button>
+        </div>
+        <textarea id="rejectReason" class="form-control" rows="2" placeholder="หรือพิมพ์เหตุผลอื่นๆ ที่นี่..."></textarea>
+      `,
       showCancelButton: true,
-      confirmButtonText: 'ยืนยันการยกเลิก',
-      cancelButtonText: 'ปิด',
-      confirmButtonColor: '#c1493e',
-      preConfirm: (reason) => {
+      confirmButtonText: 'ยืนยันปฏิเสธ',
+      cancelButtonText: 'ยกเลิก',
+      customClass: {
+        confirmButton: 'btn btn-danger mx-1',
+        cancelButton: 'btn btn-secondary mx-1'
+      },
+      buttonsStyling: false,
+      preConfirm: () => {
+        const reason = (document.getElementById('rejectReason') as HTMLTextAreaElement).value;
         if (!reason || reason.trim() === '') {
-          Swal.showValidationMessage('จำเป็นต้องกรอกเหตุผลในการยกเลิกคำขอจอง');
+          Swal.showValidationMessage('กรุณาระบุเหตุผลสักนิดครับ 🙏');
+          return false;
         }
         return reason;
       }
@@ -161,12 +175,18 @@ export default function Approval() {
       cancelButtonColor: '#6c757d',
       confirmButtonText: 'ลบข้อมูล',
       cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        DB.deleteBooking(id).then(() => {
+        setDeletingId(id);
+        try {
+          await DB.deleteBooking(id);
           Swal.fire('ลบสำเร็จ', 'ข้อมูลถูกลบเรียบร้อยแล้ว', 'success');
           loadData();
-        });
+        } catch (err: any) {
+          Swal.fire('ข้อผิดพลาด', err.message, 'error');
+        } finally {
+          setDeletingId(null);
+        }
       }
     });
   };
@@ -174,42 +194,25 @@ export default function Approval() {
   return (
     <div className="page-fade">
       <div className="panel">
-        <div className="panel-head flex-wrap gap-2">
-          <h6><i className="bi bi-clipboard-check"></i> ตรวจสอบและอนุมัติการจอง</h6>
-          <div className="d-flex flex-wrap gap-2">
-            <input 
-              type="text" 
-              className="form-control form-control-sm" 
-              id="ap_search" 
-              placeholder="ค้นหา..." 
-              style={{ width: '180px' }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select 
-              className="form-select form-select-sm" 
-              id="ap_filter_status" 
-              style={{ width: '150px' }}
-              value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-            >
-              <option value="pending">รออนุมัติ</option>
-              <option value="approved">อนุมัติ</option>
-              <option value="cancelled">ยกเลิก</option>
-              <option value="">ทุกสถานะ</option>
-            </select>
-            <input 
-              type="date" 
-              className="form-control form-control-sm" 
-              id="ap_filter_date" 
-              style={{ width: '150px' }}
-              value={filterDate}
-              onChange={(e) => { setFilterDate(e.target.value); setCurrentPage(1); }}
-            />
+        <div className="panel-head">
+          <h6 className="mb-0"><i className="bi bi-clipboard-check text-primary"></i> ตรวจสอบและอนุมัติการจอง</h6>
+        </div>
+        
+        {/* FILTER BAR */}
+        <div className="modern-filter-container mt-3">
+          <div className="filter-tabs-scroll">
+            <button className={`filter-btn ${filterStatus === '' ? 'active' : ''}`} onClick={() => { setFilterStatus(''); setCurrentPage(1); }}>ทั้งหมด</button>
+            <button className={`filter-btn ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => { setFilterStatus('pending'); setCurrentPage(1); }}>รออนุมัติ</button>
+            <button className={`filter-btn ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => { setFilterStatus('approved'); setCurrentPage(1); }}>อนุมัติ</button>
+            <button className={`filter-btn ${filterStatus === 'cancelled' ? 'active' : ''}`} onClick={() => { setFilterStatus('cancelled'); setCurrentPage(1); }}>ยกเลิก</button>
+          </div>
+          <div className="filter-controls">
+            <input className="filter-control-item" placeholder="ค้นหา..." type="text" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} style={{ width: '130px' }} />
+            <input className="filter-control-item" type="date" title="วันที่" value={filterDate} onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} />
           </div>
         </div>
         <div className="panel-body p-0">
-          <div className="table-responsive">
+          <div className="table-responsive d-none d-md-block">
             <table className="table table-hover align-middle mb-0" id="apTable">
               <thead>
                 <tr>
@@ -259,7 +262,9 @@ export default function Approval() {
                           <button className="btn btn-success btn-sm text-white d-inline-flex align-items-center gap-1 me-1" onClick={() => handleView(b)}>
                             <i className="bi bi-eye"></i> ดูรายละเอียด
                           </button>
-                          <button className="btn-action act-cancel" title="ลบรายการจอง" onClick={() => handleDelete(b.id)}><i className="bi bi-trash"></i></button>
+                          <button className="btn-action act-cancel" title="ลบรายการจอง" onClick={() => handleDelete(b.id)} disabled={deletingId === b.id}>
+                            {deletingId === b.id ? <span className="spinner-border spinner-border-sm"></span> : <i className="bi bi-trash"></i>}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -267,6 +272,50 @@ export default function Approval() {
                 )}
               </tbody>
             </table>
+          </div>
+          
+          {/* MOBILE CARDS */}
+          <div className="d-block d-md-none p-3 bg-light">
+            {paginated.length === 0 ? (
+              <div className="text-center py-5 text-muted border-0">
+                <div className="empty-state">
+                  <i className="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                  <p className="mb-0">ไม่พบรายการจองที่ตรงกับเงื่อนไข</p>
+                </div>
+              </div>
+            ) : (
+              paginated.map(b => {
+                const roomName = getRoomName(b.roomId);
+                const bInfo = getBookerInfo(b);
+                const displayDate = new Date(b.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+
+                return (
+                  <div key={b.id} className={`mobile-card status-${b.status}`}>
+                    <div className="mobile-card-header">
+                      <h6 className="mobile-card-title">{b.topic}</h6>
+                      <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                        {getStatusBadge(b.status)}
+                      </span>
+                    </div>
+                    <div className="mobile-card-body">
+                      <p className="mb-2"><i className="bi bi-person"></i> <strong>{bInfo.name}</strong> {bInfo.isExternal && <span className="badge bg-secondary-subtle text-secondary ms-1">ภายนอก</span>}</p>
+                      <p className="mb-2"><i className="bi bi-tag-fill"></i> {bInfo.dept}</p>
+                      <p className="mb-2"><i className="bi bi-geo-alt"></i> <strong>{roomName}</strong></p>
+                      <p className="mb-2"><i className="bi bi-calendar-event"></i> {displayDate}</p>
+                      <p className="mb-0"><i className="bi bi-clock"></i> {b.timeStart} - {b.timeEnd}</p>
+                    </div>
+                    <div className="mobile-card-actions">
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => handleView(b)}>รายละเอียด</button>
+                      {b.status !== 'pending' && (
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(b.id)} disabled={deletingId === b.id}>
+                          {deletingId === b.id ? <span className="spinner-border spinner-border-sm"></span> : <><i className="bi bi-trash"></i> ลบ</>}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
           
           {totalPages > 1 && (

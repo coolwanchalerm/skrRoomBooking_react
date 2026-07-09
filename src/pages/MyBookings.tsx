@@ -207,45 +207,72 @@ export default function MyBookings() {
         </div>
 
         {/* FILTER BAR */}
-        <div className="panel-body border-bottom bg-light py-2">
-          <div className="row g-2 align-items-end">
-            <div className="col-md-2">
-              <label className="form-label form-label-sm">จากวันที่</label>
-              <input type="date" className="form-control form-control-sm" value={fromDate} max={toDate || undefined} onChange={e => handleFromDateChange(e.target.value)} />
-            </div>
-            <div className="col-md-2">
-              <label className="form-label form-label-sm">ถึงวันที่</label>
-              <input type="date" className="form-control form-control-sm" value={toDate} min={fromDate || undefined} onChange={e => handleToDateChange(e.target.value)} />
-            </div>
-            <div className="col-md-2">
-              <label className="form-label form-label-sm">ห้องประชุม</label>
-              <select className="form-select form-select-sm" value={filterRoom} onChange={e => { setFilterRoom(e.target.value); setCurrentPage(1); }}>
-                <option value="">ทุกห้อง</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label form-label-sm">สถานะ</label>
-              <select className="form-select form-select-sm" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}>
-                <option value="">ทุกสถานะ</option>
-                <option value="pending">รออนุมัติ</option>
-                <option value="approved">อนุมัติ</option>
-                <option value="cancelled">ยกเลิก</option>
-              </select>
-            </div>
-            <div className="col-md-4">
-              <label className="form-label form-label-sm">ค้นหา</label>
-              <div className="input-group input-group-sm">
-                <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                <input type="text" className="form-control" placeholder="พิมพ์ชื่อผู้จอง, หัวข้อ, สังกัด..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} />
-              </div>
-            </div>
+        <div className="modern-filter-container mt-3">
+          <div className="filter-tabs-scroll">
+            <button 
+              className={`filter-btn ${filterStatus === '' ? 'active' : ''}`}
+              onClick={() => { setFilterStatus(''); setCurrentPage(1); }}
+            >
+              ทั้งหมด
+            </button>
+            <button 
+              className={`filter-btn ${filterStatus === 'pending' ? 'active' : ''}`}
+              onClick={() => { setFilterStatus('pending'); setCurrentPage(1); }}
+            >
+              รออนุมัติ
+            </button>
+            <button 
+              className={`filter-btn ${filterStatus === 'approved' ? 'active' : ''}`}
+              onClick={() => { setFilterStatus('approved'); setCurrentPage(1); }}
+            >
+              อนุมัติ
+            </button>
+            <button 
+              className={`filter-btn ${filterStatus === 'cancelled' ? 'active' : ''}`}
+              onClick={() => { setFilterStatus('cancelled'); setCurrentPage(1); }}
+            >
+              ยกเลิก
+            </button>
+          </div>
+          <div className="filter-controls">
+            <input 
+              type="text" 
+              className="filter-control-item" 
+              placeholder="ค้นหา..." 
+              value={searchQuery} 
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              style={{ width: '130px' }}
+            />
+            <input 
+              type="date" 
+              className="filter-control-item" 
+              title="จากวันที่"
+              value={fromDate} 
+              max={toDate || undefined} 
+              onChange={e => handleFromDateChange(e.target.value)} 
+            />
+            <input 
+              type="date" 
+              className="filter-control-item" 
+              title="ถึงวันที่"
+              value={toDate} 
+              min={fromDate || undefined} 
+              onChange={e => handleToDateChange(e.target.value)} 
+            />
+            <select 
+              className="filter-control-item" 
+              value={filterRoom} 
+              onChange={e => { setFilterRoom(e.target.value); setCurrentPage(1); }}
+            >
+              <option value="">ทุกห้องประชุม</option>
+              {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
           </div>
         </div>
 
         <div className="panel-body p-0">
           
-          <div className="table-responsive">
+          <div className="table-responsive d-none d-md-block">
             <table className="table table-hover align-middle mb-0" id="mbTable">
               <thead>
                 <tr>
@@ -312,6 +339,55 @@ export default function MyBookings() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* MOBILE CARDS */}
+          <div className="d-block d-md-none p-3 bg-light">
+            {paginated.length === 0 ? (
+              <div className="text-center py-5 text-muted border-0">
+                <div className="empty-state">
+                  <i className="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                  <p className="mb-0">ยังไม่มีรายการจอง</p>
+                </div>
+              </div>
+            ) : (
+              paginated.map(b => {
+                const roomName = getRoomName(b.roomId);
+                const bInfo = getBookerInfo(b);
+                const displayDate = new Date(b.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                const equipment = b.equipment ? (Array.isArray(b.equipment) ? b.equipment.join(', ') : b.equipment) : '-';
+
+                return (
+                  <div key={b.id} className={`mobile-card status-${b.status}`}>
+                    <div className="mobile-card-header">
+                      <h6 className="mobile-card-title">{b.topic}</h6>
+                      <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                        {getStatusBadge(b.status)}
+                      </span>
+                    </div>
+                    <div className="mobile-card-body">
+                      <p className="mb-2"><i className="bi bi-person"></i> <strong>{bInfo.name}</strong> {bInfo.isExternal && <span className="badge bg-secondary-subtle text-secondary ms-1">ภายนอก</span>}</p>
+                      <p className="mb-2"><i className="bi bi-tag-fill"></i> {bInfo.dept}</p>
+                      <p className="mb-2"><i className="bi bi-geo-alt"></i> <strong>{roomName}</strong></p>
+                      <p className="mb-2"><i className="bi bi-calendar-event"></i> {displayDate}</p>
+                      <p className="mb-2"><i className="bi bi-clock"></i> {b.timeStart} - {b.timeEnd}</p>
+                      <p className="mb-0"><i className="bi bi-tv"></i> อุปกรณ์: {equipment}</p>
+                    </div>
+                    <div className="mobile-card-actions">
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => handleView(b)}>รายละเอียด</button>
+                      {b.status === 'pending' && (
+                        <button className="btn btn-sm btn-outline-secondary" onClick={() => handleEdit(b)}>แก้ไข</button>
+                      )}
+                      {(isAdmin || b.status === 'pending') && (
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(b.id)} disabled={deletingId === b.id}>
+                          {deletingId === b.id ? <span className="spinner-border spinner-border-sm"></span> : 'ลบ'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           {/* PAGINATION */}

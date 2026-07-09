@@ -25,7 +25,7 @@ export default function Topbar({ onToggleSidebar }: TopbarProps) {
 
   return (
     <header className="topbar">
-      <button className="btn btn-icon d-lg-none" onClick={onToggleSidebar}>
+      <button className="btn btn-icon d-none" onClick={onToggleSidebar}>
         <i className="bi bi-list"></i>
       </button>
       <div className="topbar-title">{title}</div>

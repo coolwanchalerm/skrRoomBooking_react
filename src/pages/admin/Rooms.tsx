@@ -129,56 +129,42 @@ export default function Rooms() {
             </button>
           </div>
         </div>
-        <div className="panel-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th className="ps-3">#</th>
-                  <th>ชื่อห้อง</th>
-                  <th>อาคาร</th>
-                  <th>ชั้น</th>
-                  <th>ความจุ (คน)</th>
-                  <th>สี/สัญลักษณ์</th>
-                  <th>สถานะ</th>
-                  <th className="text-end pe-3">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center text-muted py-4">ไม่มีห้องประชุม</td>
-                  </tr>
-                ) : (
-                  rooms.map((r, i) => (
-                    <tr key={r.id}>
-                      <td className="ps-3">{i + 1}</td>
-                      <td className="font-weight-bold"><strong>{r.name}</strong></td>
-                      <td>{r.building || "-"}</td>
-                      <td>{r.floor || "-"}</td>
-                      <td>{r.capacity || '-'}</td>
-                      <td>
-                        <span className="cal-dot d-inline-block align-middle me-2" style={{ background: r.color || '#0e2a4a', width: '20px', height: '20px', borderRadius: '4px', border: '1px solid #ddd' }}></span>
-                        <code style={{ color: '#222' }}>{r.color || '#0e2a4a'}</code>
-                      </td>
-                      <td>
-                        <span className={`badge ${r.status === 'maintenance' ? 'bg-danger' : 'bg-success'}`}>
-                          {r.status === 'maintenance' ? 'ปิดปรับปรุง' : 'พร้อมใช้งาน'}
-                        </span>
-                      </td>
-                      <td className="text-end pe-3 text-nowrap">
-                        <button className="btn-action act-edit me-1" title="แก้ไข" onClick={() => openModal(r.id)}>
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                        <button className="btn-action act-cancel" title="ลบ" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id}>
-                          {deletingId === r.id ? <span className="spinner-border spinner-border-sm" style={{ width: '1rem', height: '1rem', borderWidth: '0.15em' }}></span> : <i className="bi bi-trash"></i>}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        <div className="panel-body p-0 bg-light rounded-bottom" style={{ borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+          <div className="row g-4 p-4">
+            {rooms.length === 0 ? (
+              <div className="col-12 text-center text-muted py-5">
+                <i className="bi bi-door-closed fs-1 mb-3 d-block opacity-50"></i>
+                ไม่มีห้องประชุม
+              </div>
+            ) : (
+              rooms.map((r) => (
+                <div key={r.id} className="col-12 col-md-6 col-lg-4">
+                  <div className="room-gallery-card">
+                     <div className="room-card-image" style={{ backgroundColor: r.color || '#0e2a4a' }}>
+                       <i className="bi bi-door-open-fill"></i>
+                     </div>
+                     <div className="room-card-content">
+                       <div className="d-flex justify-content-between align-items-start mb-3">
+                         <h5 className="room-card-title text-truncate pe-2">{r.name}</h5>
+                         <span className={`badge ${r.status === 'maintenance' ? 'bg-danger' : 'bg-success'}`}>
+                           {r.status === 'maintenance' ? 'ปิดปรับปรุง' : 'พร้อมใช้งาน'}
+                         </span>
+                       </div>
+                       <p className="room-card-desc"><i className="bi bi-building"></i> อาคาร: {r.building || "-"} | ชั้น: {r.floor || "-"}</p>
+                       <p className="room-card-capacity"><i className="bi bi-people-fill"></i> ความจุ: {r.capacity || '-'} คน</p>
+                     </div>
+                     <div className="room-card-actions">
+                       <button className="btn btn-sm btn-outline-primary w-50" onClick={() => openModal(r.id)}>
+                         <i className="bi bi-pencil"></i> แก้ไข
+                       </button>
+                       <button className="btn btn-sm btn-outline-danger w-50" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id}>
+                         {deletingId === r.id ? <span className="spinner-border spinner-border-sm"></span> : <><i className="bi bi-trash"></i> ลบ</>}
+                       </button>
+                     </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -101,30 +101,18 @@ export default function Calendar() {
                   {dayBookings.slice(0, 2).map((b, idx) => {
                     const room = getRoom(b.roomId);
                     const color = room ? (room.color || 'var(--navy)') : 'var(--navy)';
-                    const rShortName = room ? room.name.replace('ห้องประชุม', '') : 'ห้อง';
                     return (
                       <div 
                         key={idx} 
-                        style={{
-                          backgroundColor: color,
-                          color: 'white',
-                          fontSize: '10px',
-                          padding: '2.5px 5px',
-                          borderRadius: '4px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          fontWeight: 500,
-                          lineHeight: 1.2,
-                          cursor: 'pointer'
-                        }}
-                        title={`${b.topic} (${b.timeStart}-${b.timeEnd}) - ${b.bookerName}`}
+                        className="cal-event-pill"
+                        title={`${b.topic} (${b.timeStart}-${b.timeEnd}) - ${b.bookerName} [${room?.name}]`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedBooking(b);
                         }}
                       >
-                        {b.timeStart} {rShortName}
+                        <span className="cal-dot" style={{ backgroundColor: color, flexShrink: 0, marginRight: '4px' }}></span>
+                        <span>{b.timeStart}</span>
                       </div>
                     );
                   })}
@@ -149,8 +137,7 @@ export default function Calendar() {
   return (
     <div className="page-fade">
       <div className="panel">
-        <div className="panel-head flex-wrap gap-2">
-          <h6><i className="bi bi-calendar3"></i> ปฏิทินการจองห้องประชุม</h6>
+        <div className="panel-head justify-content-center py-2">
           <div className="d-flex align-items-center gap-2">
             <button className="btn btn-sm btn-outline-secondary" onClick={handlePrevMonth}>
               <i className="bi bi-chevron-left"></i>
@@ -176,6 +163,9 @@ export default function Calendar() {
             ))}
             {renderCalendarGrid()}
           </div>
+          <div className="text-center mt-3 text-muted" style={{ fontSize: '12px' }}>
+            <i className="bi bi-hand-index-thumb"></i> แตะที่วันที่หรือเวลาเพื่อดูรายละเอียดการจองด้านล่าง
+          </div>
         </div>
       </div>
 
@@ -189,7 +179,8 @@ export default function Calendar() {
           </h6>
         </div>
         <div className="panel-body p-0">
-          <div className="table-responsive">
+          
+          <div className="table-responsive d-none d-md-block">
             <table className="table table-hover align-middle mb-0">
               <thead>
                 <tr>
@@ -230,6 +221,36 @@ export default function Calendar() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* MOBILE CARDS FOR SELECTED DATE */}
+          <div className="d-block d-md-none p-3 bg-light">
+            {selectedDateBookings.length > 0 ? (
+              selectedDateBookings.sort((a,b) => a.timeStart.localeCompare(b.timeStart)).map(b => {
+                const room = getRoom(b.roomId);
+                return (
+                  <div key={b.id} className={`mobile-card status-${b.status}`} onClick={() => setSelectedBooking(b)} style={{ cursor: 'pointer' }}>
+                    <div className="mobile-card-header">
+                      <h6 className="mobile-card-title">{b.topic}</h6>
+                      <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                        {b.status === 'approved' ? 'อนุมัติ' : b.status === 'pending' ? 'รออนุมัติ' : 'ยกเลิก'}
+                      </span>
+                    </div>
+                    <div className="mobile-card-body">
+                      <p className="mb-2"><i className="bi bi-person"></i> <strong>{b.bookerName}</strong></p>
+                      <p className="mb-2"><i className="bi bi-tag-fill"></i> {b.department}</p>
+                      <p className="mb-2"><i className="bi bi-geo-alt"></i> <strong>{room?.name}</strong></p>
+                      <p className="mb-0"><i className="bi bi-clock"></i> {b.timeStart} - {b.timeEnd}</p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-5 text-muted border-0">
+                <i className="bi bi-calendar-x fs-1 d-block mb-2 opacity-50"></i>
+                <p className="mb-0">ไม่มีรายการจองในวันที่เลือก</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

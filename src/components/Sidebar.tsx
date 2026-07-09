@@ -29,9 +29,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <nav className="sidebar-nav" id="sidebarNav">
         {isAdmin && (
-          <Link to="/" className={`nav-link-item ${isActive('/') ? 'active' : ''}`} onClick={onClose}>
-            <i className="bi bi-grid-fill"></i> แดชบอร์ด
-          </Link>
+          <>
+            <div className="nav-section-label">สำหรับผู้ดูแลระบบ</div>
+            <Link to="/" className={`nav-link-item ${isActive('/') ? 'active' : ''}`} onClick={onClose}>
+              <i className="bi bi-grid-fill"></i> แดชบอร์ด
+            </Link>
+          </>
         )}
         <Link to="/calendar" className={`nav-link-item ${isActive('/calendar') || (!isAdmin && isActive('/')) ? 'active' : ''}`} onClick={onClose}>
           <i className="bi bi-calendar-week"></i> ปฏิทินการจอง
@@ -49,7 +52,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {isAdmin && (
           <>
-            <div className="nav-section-label">สำหรับผู้ดูแลระบบ</div>
             <Link to="/admin/approval" className={`nav-link-item ${isActive('/admin/approval') ? 'active' : ''}`} onClick={onClose}>
               <i className="bi bi-check-circle"></i> อนุมัติการจอง
             </Link>

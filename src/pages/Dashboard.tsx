@@ -127,13 +127,26 @@ export default function Dashboard() {
     datasets: [
       {
         data: stats.deptData.length ? stats.deptData : [1],
-        backgroundColor: stats.deptData.length ? ['#4a7bb2', '#d9a440', '#4ca983', '#db6964', '#9466c4', '#f1aeb5'] : ['#e0e0e0'],
+        backgroundColor: stats.deptData.length ? ['#1e3c72', '#2a5298', '#f2994a', '#11998e', '#eb3349', '#9b59b6'] : ['#e2e8f0'],
         borderWidth: 0,
+        hoverOffset: 4
       }
     ]
   };
 
-  const chartOptions = {
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' as const }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { borderDash: [5, 5], color: '#f1f5f9' } }
+    }
+  };
+
+  const pieChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -187,14 +200,21 @@ export default function Dashboard() {
   return (
     <div className="page-fade">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h4 className="mb-1 text-navy font-display" style={{ fontWeight: 700 }}>
-            ภาพรวมระบบจองห้องประชุม
-          </h4>
-          <p className="text-muted mb-0">ยินดีต้อนรับ, <span className="fw-semibold text-dark">{user?.fullname || user?.username}</span></p>
+        <div className="d-flex align-items-center gap-3">
+          <div className="bg-white p-2 rounded-circle shadow-sm" style={{ width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i className="bi bi-person-circle text-primary" style={{ fontSize: '28px' }}></i>
+          </div>
+          <div>
+            <h4 className="mb-0 text-navy font-display" style={{ fontWeight: 800 }}>
+              ภาพรวมระบบจองห้องประชุม
+            </h4>
+            <p className="text-muted mb-0" style={{ fontSize: '14.5px' }}>
+              ยินดีต้อนรับกลับมา, <span className="fw-bold text-dark">{user?.fullname || user?.username}</span> 👋
+            </p>
+          </div>
         </div>
-        <div className="text-muted" style={{ fontSize: '14px' }}>
-          <i className="bi bi-clock-history me-1"></i> ข้อมูลอัปเดตล่าสุด: {new Date().toLocaleTimeString('th-TH')} น.
+        <div className="bg-white px-3 py-2 rounded-pill shadow-sm text-muted" style={{ fontSize: '13px', fontWeight: 500 }}>
+          <i className="bi bi-clock-history me-1 text-primary"></i> ข้อมูลอัปเดต: {new Date().toLocaleTimeString('th-TH')} น.
         </div>
       </div>
 
@@ -229,37 +249,41 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="panel mb-3">
-        <div className="panel-head flex-wrap gap-2">
-          <h6><i className="bi bi-funnel-fill"></i> กรองข้อมูลแดชบอร์ด</h6>
-          <div className="d-flex flex-wrap align-items-center gap-2 ms-auto">
-            <select className="form-select form-select-sm" style={{ width: '110px' }} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
-              <option value="">ทุกปี</option>
-              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select className="form-select form-select-sm" style={{ width: '130px' }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
-              <option value="">ทุกเดือน</option>
-              <option value="01">มกราคม</option>
-              <option value="02">กุมภาพันธ์</option>
-              <option value="03">มีนาคม</option>
-              <option value="04">เมษายน</option>
-              <option value="05">พฤษภาคม</option>
-              <option value="06">มิถุนายน</option>
-              <option value="07">กรกฎาคม</option>
-              <option value="08">สิงหาคม</option>
-              <option value="09">กันยายน</option>
-              <option value="10">ตุลาคม</option>
-              <option value="11">พฤศจิกายน</option>
-              <option value="12">ธันวาคม</option>
-            </select>
-            <select className="form-select form-select-sm" style={{ width: '200px' }} value={filterDept} onChange={e => setFilterDept(e.target.value)}>
-              <option value="">ทุกกลุ่มสาระ/ฝ่ายงาน</option>
-              <option value="__external__">บุคคลภายนอก</option>
-              {availableDepts.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <button className="btn btn-sm btn-outline-secondary" onClick={resetFilters}><i className="bi bi-arrow-counterclockwise"></i> รีเซ็ต</button>
-          </div>
+      {/* Dashboard Data Filter */}
+      <div className="modern-filter-container mt-4 mb-4" style={{ backgroundColor: '#fff', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+        <div className="d-flex align-items-center gap-2" style={{ fontWeight: 600, color: 'var(--navy)' }}>
+          <i className="bi bi-funnel-fill text-primary"></i> กรองข้อมูลสถิติ
+        </div>
+        <div className="filter-controls ms-auto">
+          <select className="filter-control-item" value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+            <option value="">ทุกปี</option>
+            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select className="filter-control-item" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+            <option value="">ทุกเดือน</option>
+            <option value="01">มกราคม</option>
+            <option value="02">กุมภาพันธ์</option>
+            <option value="03">มีนาคม</option>
+            <option value="04">เมษายน</option>
+            <option value="05">พฤษภาคม</option>
+            <option value="06">มิถุนายน</option>
+            <option value="07">กรกฎาคม</option>
+            <option value="08">สิงหาคม</option>
+            <option value="09">กันยายน</option>
+            <option value="10">ตุลาคม</option>
+            <option value="11">พฤศจิกายน</option>
+            <option value="12">ธันวาคม</option>
+          </select>
+          <select className="filter-control-item" style={{ maxWidth: '200px' }} value={filterDept} onChange={e => setFilterDept(e.target.value)}>
+            <option value="">ทุกกลุ่มสาระ/ฝ่ายงาน</option>
+            <option value="__external__">บุคคลภายนอก</option>
+            {availableDepts.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          {(filterYear || filterMonth || filterDept) && (
+            <button className="btn btn-sm btn-light rounded-pill px-3" onClick={resetFilters} style={{ border: '1px solid #e2e8f0', color: 'var(--navy)' }}>
+              <i className="bi bi-x-circle me-1"></i> ล้างค่า
+            </button>
+          )}
         </div>
       </div>
 
@@ -271,7 +295,7 @@ export default function Dashboard() {
             </div>
             <div className="panel-body">
               <div style={{ position: 'relative', height: '220px' }}>
-                <Bar data={barChartData} options={chartOptions} />
+                <Bar data={barChartData} options={barChartOptions} />
               </div>
             </div>
           </div>
@@ -283,7 +307,7 @@ export default function Dashboard() {
             </div>
             <div className="panel-body">
               <div style={{ position: 'relative', height: '220px' }}>
-                <Pie data={pieChartData} options={chartOptions} />
+                <Pie data={pieChartData} options={pieChartOptions} />
               </div>
             </div>
           </div>
@@ -291,71 +315,62 @@ export default function Dashboard() {
       </div>
 
       <div className="panel">
-        <div className="panel-head flex-wrap gap-2">
-          <h6><i className="bi bi-search"></i> ค้นหาประวัติการจอง</h6>
-          <div className="d-flex flex-wrap gap-2">
-            <input 
-              type="text" 
-              className="form-control form-control-sm" 
-              placeholder="ค้นหาชื่อ/หัวข้อ/ห้อง..." 
-              style={{ width: '200px' }} 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select 
-              className="form-select form-select-sm" 
-              style={{ width: '150px' }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">ทุกสถานะ</option>
-              <option value="pending">รออนุมัติ</option>
-              <option value="approved">อนุมัติ</option>
-              <option value="cancelled">ยกเลิก</option>
+        <div className="panel-head border-0 pb-0">
+          <h6 className="mb-0"><i className="bi bi-clock-history text-primary me-2"></i> ประวัติการจองล่าสุด</h6>
+        </div>
+        
+        <div className="modern-filter-container mt-3">
+          <div className="filter-tabs-scroll">
+            <button className={`filter-btn ${statusFilter === '' ? 'active' : ''}`} onClick={() => { setStatusFilter(''); setCurrentPage(1); }}>ทั้งหมด</button>
+            <button className={`filter-btn ${statusFilter === 'pending' ? 'active' : ''}`} onClick={() => { setStatusFilter('pending'); setCurrentPage(1); }}>รออนุมัติ</button>
+            <button className={`filter-btn ${statusFilter === 'approved' ? 'active' : ''}`} onClick={() => { setStatusFilter('approved'); setCurrentPage(1); }}>อนุมัติ</button>
+            <button className={`filter-btn ${statusFilter === 'cancelled' ? 'active' : ''}`} onClick={() => { setStatusFilter('cancelled'); setCurrentPage(1); }}>ยกเลิก</button>
+          </div>
+          <div className="filter-controls">
+            <input className="filter-control-item" placeholder="ค้นหา..." type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} style={{ width: '130px' }} />
+            <select className="filter-control-item" value={filterYear} onChange={e => { setFilterYear(e.target.value); setCurrentPage(1); }}>
+              <option value="">ทุกปี</option>
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select className="filter-control-item" value={filterMonth} onChange={e => { setFilterMonth(e.target.value); setCurrentPage(1); }}>
+              <option value="">ทุกเดือน</option>
+              {Array.from({length:12}, (_,i)=>i+1).map(m => <option key={m} value={m}>เดือน {m}</option>)}
             </select>
           </div>
         </div>
-        <div className="panel-body p-0">
-          <div className="table-responsive" style={{ maxHeight: '400px' }}>
-            <table className="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>วันที่จอง</th>
-                  <th>เวลา</th>
-                  <th>ห้อง</th>
-                  <th>หัวข้อ / สังกัดกลุ่มงาน</th>
-                  <th>ผู้จอง</th>
-                  <th>สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedData.length > 0 ? (
-                  paginatedData.map((b: any) => (
-                    <tr key={b.id}>
-                      <td>{new Date(b.date).toLocaleDateString('th-TH')}</td>
-                      <td>{b.timeStart} - {b.timeEnd}</td>
-                      <td>{getRoomName(b.roomId)}</td>
-                      <td>
-                        <div className="font-weight-bold">{b.topic}</div>
-                        <div className="text-muted" style={{fontSize: '12px'}}>{b.department}</div>
-                      </td>
-                      <td>{b.bookerName}</td>
-                      <td>
-                        {b.status === 'pending' && <span className="badge-status badge-pending"><i className="bi bi-hourglass-split"></i> รออนุมัติ</span>}
-                        {b.status === 'approved' && <span className="badge-status badge-approved"><i className="bi bi-check-circle"></i> อนุมัติ</span>}
-                        {b.status === 'cancelled' && <span className="badge-status badge-cancelled"><i className="bi bi-x-circle"></i> ยกเลิก</span>}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="text-center py-4 text-muted border-0">
-                      ไม่มีรายการจอง
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+
+        <div className="panel-body p-0 mt-2">
+          <div className="d-flex flex-column gap-3 p-3 p-md-4" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            {paginatedData.length > 0 ? (
+              <div className="row g-3 w-100">
+                {paginatedData.map((b: any) => (
+                  <div key={b.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
+                    <div className={`mobile-card status-${b.status}`}>
+                      <div className="mobile-card-header">
+                        <h6 className="mobile-card-title text-truncate" title={b.topic}>{b.topic}</h6>
+                        <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                          {b.status === 'pending' && <span className="badge-status badge-pending"><i className="bi bi-hourglass-split"></i> รออนุมัติ</span>}
+                          {b.status === 'approved' && <span className="badge-status badge-approved" style={{color: 'white', background: 'transparent'}}><i className="bi bi-check-circle"></i> อนุมัติแล้ว</span>}
+                          {b.status === 'cancelled' && <span className="badge-status badge-cancelled" style={{color: 'white', background: 'transparent'}}><i className="bi bi-x-circle"></i> ยกเลิก</span>}
+                        </span>
+                      </div>
+                      <div className="mobile-card-body">
+                        <p className="mb-2"><i className="bi bi-person"></i> <strong>{b.bookerName}</strong></p>
+                        <p className="mb-2"><i className="bi bi-tag-fill"></i> {b.department || 'ไม่ระบุสังกัด'}</p>
+                        <p className="mb-2"><i className="bi bi-geo-alt"></i> <strong>{getRoomName(b.roomId)}</strong></p>
+                        <p className="mb-2"><i className="bi bi-calendar-event"></i> {new Date(b.date).toLocaleDateString('th-TH')}</p>
+                        <p className="mb-0"><i className="bi bi-clock"></i> {b.timeStart} - {b.timeEnd}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-5 text-muted">
+                <i className="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                ไม่มีประวัติการจองตามเงื่อนไขที่ระบุ
+              </div>
+            )}
           </div>
           
           {/* Pagination Controls */}
