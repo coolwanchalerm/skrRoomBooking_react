@@ -21,6 +21,7 @@ body{
   background: var(--cream);
   color: var(--ink);
   margin:0;
+  overflow-x: hidden;
 }
 
 /* ===================== LOGIN SCREEN ===================== */
@@ -522,6 +523,7 @@ body{
   flex-direction:column;
   gap:4px;
   background:#fff;
+  min-width: 0;
 }
 .cal-cell:hover{ border-color: var(--navy); box-shadow:0 4px 12px rgba(14,42,74,0.08); }
 .cal-cell.cal-empty{ background:transparent; border:none; cursor:default; }

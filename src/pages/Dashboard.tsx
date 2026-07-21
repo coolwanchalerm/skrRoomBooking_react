@@ -342,28 +342,76 @@ export default function Dashboard() {
         <div className="panel-body p-0 mt-2">
           <div className="d-flex flex-column gap-3 p-3 p-md-4" style={{ maxHeight: '500px', overflowY: 'auto' }}>
             {paginatedData.length > 0 ? (
-              <div className="row g-3 w-100">
-                {paginatedData.map((b: any) => (
-                  <div key={b.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
-                    <div className={`mobile-card status-${b.status}`}>
-                      <div className="mobile-card-header">
-                        <h6 className="mobile-card-title text-truncate" title={b.topic}>{b.topic}</h6>
-                        <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
-                          {b.status === 'pending' && <span className="badge-status badge-pending"><i className="bi bi-hourglass-split"></i> รออนุมัติ</span>}
-                          {b.status === 'approved' && <span className="badge-status badge-approved" style={{color: 'white', background: 'transparent'}}><i className="bi bi-check-circle"></i> อนุมัติแล้ว</span>}
-                          {b.status === 'cancelled' && <span className="badge-status badge-cancelled" style={{color: 'white', background: 'transparent'}}><i className="bi bi-x-circle"></i> ยกเลิก</span>}
-                        </span>
+              <div className="w-100">
+                {/* Mobile / Tablet Cards */}
+                <div className="d-block d-md-none">
+                  <div className="row g-3">
+                    {paginatedData.map((b: any) => (
+                      <div key={b.id} className="col-12 col-md-6">
+                        <div className={`mobile-card status-${b.status}`}>
+                          <div className="mobile-card-header">
+                            <h6 className="mobile-card-title text-truncate" title={b.topic}>{b.topic}</h6>
+                            <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                              {b.status === 'pending' && <span className="badge-status badge-pending"><i className="bi bi-hourglass-split"></i> รออนุมัติ</span>}
+                              {b.status === 'approved' && <span className="badge-status badge-approved" style={{color: 'white', background: 'transparent'}}><i className="bi bi-check-circle"></i> อนุมัติแล้ว</span>}
+                              {b.status === 'cancelled' && <span className="badge-status badge-cancelled" style={{color: 'white', background: 'transparent'}}><i className="bi bi-x-circle"></i> ยกเลิก</span>}
+                            </span>
+                          </div>
+                          <div className="mobile-card-body">
+                            <p className="mb-2"><i className="bi bi-person"></i> <strong>{b.bookerName}</strong></p>
+                            <p className="mb-2"><i className="bi bi-tag-fill"></i> {b.department || 'ไม่ระบุสังกัด'}</p>
+                            <p className="mb-2"><i className="bi bi-geo-alt"></i> <strong>{getRoomName(b.roomId)}</strong></p>
+                            <p className="mb-2"><i className="bi bi-calendar-event"></i> {new Date(b.date).toLocaleDateString('th-TH')}</p>
+                            <p className="mb-0"><i className="bi bi-clock"></i> {b.timeStart} - {b.timeEnd}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mobile-card-body">
-                        <p className="mb-2"><i className="bi bi-person"></i> <strong>{b.bookerName}</strong></p>
-                        <p className="mb-2"><i className="bi bi-tag-fill"></i> {b.department || 'ไม่ระบุสังกัด'}</p>
-                        <p className="mb-2"><i className="bi bi-geo-alt"></i> <strong>{getRoomName(b.roomId)}</strong></p>
-                        <p className="mb-2"><i className="bi bi-calendar-event"></i> {new Date(b.date).toLocaleDateString('th-TH')}</p>
-                        <p className="mb-0"><i className="bi bi-clock"></i> {b.timeStart} - {b.timeEnd}</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="d-none d-md-block">
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th className="ps-3">หัวข้อการประชุม</th>
+                          <th>ผู้จอง / สังกัด</th>
+                          <th>ห้องประชุม</th>
+                          <th>วันที่</th>
+                          <th>เวลา</th>
+                          <th className="pe-3 text-end">สถานะ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedData.map((b: any) => (
+                          <tr key={b.id}>
+                            <td className="ps-3">
+                              <div className="fw-semibold text-navy">{b.topic}</div>
+                            </td>
+                            <td>
+                              <div className="fw-bold">{b.bookerName}</div>
+                              <div className="small text-muted">{b.department || '-'}</div>
+                            </td>
+                            <td>
+                              <span className="badge bg-light text-dark border"><i className="bi bi-geo-alt"></i> {getRoomName(b.roomId)}</span>
+                            </td>
+                            <td>{new Date(b.date).toLocaleDateString('th-TH')}</td>
+                            <td>{b.timeStart} - {b.timeEnd}</td>
+                            <td className="pe-3 text-end">
+                              <span className={`badge ${b.status === 'pending' ? 'bg-warning text-dark' : b.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                                {b.status === 'pending' && <><i className="bi bi-hourglass-split"></i> รออนุมัติ</>}
+                                {b.status === 'approved' && <><i className="bi bi-check-circle"></i> อนุมัติแล้ว</>}
+                                {b.status === 'cancelled' && <><i className="bi bi-x-circle"></i> ยกเลิก</>}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-center py-5 text-muted">

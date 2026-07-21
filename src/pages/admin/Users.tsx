@@ -189,41 +189,104 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="row g-4">
-        {paginated.length === 0 ? (
-          <div className="col-12 text-center text-muted py-5">
-            <i className="bi bi-person-x fs-1 d-block mb-3 opacity-50"></i>
-            ไม่พบข้อมูลผู้ใช้งาน
-          </div>
-        ) : (
-          paginated.map((u) => (
-            <div key={u.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
-              <div className={`mobile-card status-${u.role === 'admin' ? 'approved' : 'pending'}`}>
-                <div className="mobile-card-header">
-                  <h6 className="mobile-card-title text-truncate" title={u.fullname || u.username}>{u.fullname || u.username}</h6>
-                  <span className={`badge ${u.role === 'admin' ? 'bg-primary' : 'bg-secondary'}`}>
-                    <span className="badge-status" style={{color: 'white', background: 'transparent', padding: 0}}>
-                      {u.role === 'admin' ? <><i className="bi bi-shield-lock-fill"></i> แอดมิน</> : <><i className="bi bi-person-fill"></i> ครู</>}
+      {/* Mobile / Tablet Cards */}
+      <div className="d-block d-md-none">
+        <div className="row g-4">
+          {paginated.length === 0 ? (
+            <div className="col-12 text-center text-muted py-5">
+              <i className="bi bi-person-x fs-1 d-block mb-3 opacity-50"></i>
+              ไม่พบข้อมูลผู้ใช้งาน
+            </div>
+          ) : (
+            paginated.map((u) => (
+              <div key={u.id} className="col-12 col-md-6">
+                <div className={`mobile-card status-${u.role === 'admin' ? 'approved' : 'pending'}`}>
+                  <div className="mobile-card-header">
+                    <h6 className="mobile-card-title text-truncate" title={u.fullname || u.username}>{u.fullname || u.username}</h6>
+                    <span className={`badge ${u.role === 'admin' ? 'bg-primary' : 'bg-secondary'}`}>
+                      <span className="badge-status" style={{color: 'white', background: 'transparent', padding: 0}}>
+                        {u.role === 'admin' ? <><i className="bi bi-shield-lock-fill"></i> แอดมิน</> : <><i className="bi bi-person-fill"></i> ครู</>}
+                      </span>
                     </span>
-                  </span>
-                </div>
-                <div className="mobile-card-body">
-                  <p className="mb-2"><i className="bi bi-person"></i> <strong>@{u.username}</strong></p>
-                  <p className="mb-2"><i className="bi bi-building"></i> {u.department || 'ไม่ได้ระบุสังกัด'}</p>
-                  <p className="mb-0"><i className="bi bi-telephone"></i> {u.phone || '-'}</p>
-                </div>
-                <div className="mobile-card-actions">
-                  <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal(u.id)}>
-                    <i className="bi bi-pencil"></i> แก้ไข
-                  </button>
-                  <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(u.id)} disabled={deletingId === u.id}>
-                    {deletingId === u.id ? <span className="spinner-border spinner-border-sm"></span> : <><i className="bi bi-trash"></i> ลบ</>}
-                  </button>
+                  </div>
+                  <div className="mobile-card-body">
+                    <p className="mb-2"><i className="bi bi-person"></i> <strong>@{u.username}</strong></p>
+                    <p className="mb-2"><i className="bi bi-building"></i> {u.department || 'ไม่ได้ระบุสังกัด'}</p>
+                    <p className="mb-0"><i className="bi bi-telephone"></i> {u.phone || '-'}</p>
+                  </div>
+                  <div className="mobile-card-actions">
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal(u.id)}>
+                      <i className="bi bi-pencil"></i> แก้ไข
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(u.id)} disabled={deletingId === u.id}>
+                      {deletingId === u.id ? <span className="spinner-border spinner-border-sm"></span> : <><i className="bi bi-trash"></i> ลบ</>}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Table */}
+      <div className="panel mt-3 d-none d-md-block">
+        <div className="panel-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th className="ps-3">#</th>
+                  <th>ชื่อ-นามสกุล / Username</th>
+                  <th>กลุ่มสาระฯ / ฝ่ายงาน</th>
+                  <th>เบอร์โทรศัพท์</th>
+                  <th>ระดับสิทธิ์</th>
+                  <th className="pe-3 text-end">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-5 text-muted border-0">
+                      <div className="empty-state">
+                        <i className="bi bi-person-x fs-1 d-block mb-2 opacity-50"></i>
+                        <p className="mb-0">ไม่พบข้อมูลผู้ใช้งาน</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginated.map((u, i) => (
+                    <tr key={u.id}>
+                      <td className="ps-3 text-muted">{(currentPage - 1) * itemsPerPage + i + 1}</td>
+                      <td>
+                        <div className="fw-bold text-navy">{u.fullname || u.username}</div>
+                        <div className="small text-muted">@{u.username}</div>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark border"><i className="bi bi-building"></i> {u.department || '-'}</span>
+                      </td>
+                      <td>{u.phone || '-'}</td>
+                      <td>
+                        {u.role === 'admin' ? 
+                          <span className="badge bg-primary"><i className="bi bi-shield-lock-fill"></i> แอดมิน</span> : 
+                          <span className="badge bg-secondary"><i className="bi bi-person-fill"></i> ครู/บุคลากร</span>
+                        }
+                      </td>
+                      <td className="pe-3 text-end text-nowrap">
+                        <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => openModal(u.id)}>
+                          <i className="bi bi-pencil"></i> แก้ไข
+                        </button>
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(u.id)} disabled={deletingId === u.id}>
+                          {deletingId === u.id ? <span className="spinner-border spinner-border-sm"></span> : <><i className="bi bi-trash"></i> ลบ</>}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {totalPages > 1 && (
